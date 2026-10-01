@@ -272,6 +272,21 @@ ctx.slots.inject('settings.section', () =>
 
 ---
 
+
+### 5.5 前台活动抑制破局方案：应用内浮窗 Toast (In-App Toast)
+- **现象**：当用户正在 DSH 界面中操作（窗口处于聚焦活跃状态 `document.hasFocus() === true`）时，macOS 系统通知中心默认会判定“用户正在注视该应用”，并对前台应用的横幅进行静默压制，导致屏幕右上角完全看不到系统横幅！
+- **破解方案**：双轨通知机制。
+  - 后台切走时：依赖 macOS 系统通知中心弹窗；
+  - 前台在用时：由插件前端在 DSH 窗口右上角滑出一个精致的原生暗色 In-App Toast 浮窗（`backdrop-filter: blur(24px)`），附带任务摘要与点击直达，实现无论前台还是后台 100% 提醒，绝不漏消息！
+
+### 5.6 自动切换会话 (Auto-Jump) 与提醒时机策略 (Alert Timing)
+- **自动切会话**：在多任务并发场景下，用户可能在看 Session B，而后台跑着的 Session A 完成或需要审批。开启 `autoJumpSession` 后，插件在事件到达时直接调用 `ctx.uiWorkspace.openSession(sessionId)`，无需用户手动寻找或点击，DSH 自动切入该会话！
+- **提醒时机模式**：
+  - **全量提醒 (Always)**：无论窗口聚焦与否，均发出声音、系统横幅与应用内浮窗；
+  - **仅在未聚焦 / 后台时提醒 (Unfocused only)**：在 DSH 内专注阅读时不打扰，窗口最小化或切到其他软件后才提醒。
+
+---
+
 ## 6. 官方插件市场 (dsh-market) 收录与发布流程
 
 DSH 客户端内的插件市场索引来自官方开源目录仓库：  

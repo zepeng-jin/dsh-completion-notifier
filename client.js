@@ -2,12 +2,14 @@
  * dsh-completion-notifier client bundle
  * Features:
  * 1. Dedicated Settings Sidebar Section ('settings.section') with pixel-perfect SVG Bell icon
- * 2. Native macOS Notification via Web Notification API (100% DSH Whale Icon, zero Script Editor)
- * 3. Click notification to focus window & jump to session (no Finder popup)
- * 4. Refined macOS-style Toggle Switches in Settings UI (Apple blue, no neon cyan, no ugly square checkboxes)
- * 5. Approval & Plan Mode Alerts: notify when waiting for permission ('allow'), plan review, or user questions
- * 6. Smart Session Titler: automatically summarizes clean titles after 1st turn, replacing dumb 'task ready'
- * 7. Understated typography & minimalist dark-mode palette
+ * 2. Native macOS Notification via Web Notification API (100% DSH Whale Icon)
+ * 3. In-App Floating Toast Notification: 100% visible even when inside DSH (avoids macOS frontmost suppression)
+ * 4. Auto-Jump Session: automatically switches DSH to the session upon completion or approval request
+ * 5. Alert Timing Mode: All-time alert (always) vs Unfocused/background only (unfocused)
+ * 6. Click notification/toast to focus window & jump to session
+ * 7. Refined Apple-style Toggle Switches & dark-mode styling
+ * 8. Approval & Plan Mode Alerts
+ * 9. Smart Session Titler
  */
 
 if (typeof window !== 'undefined' && window.__ModuleLoader__) {
@@ -20,8 +22,25 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
 
       const React = require('react');
 
+      // 客户端内存配置缓存
+      let activeSettings = null;
+
+      function fetchSettingsSync() {
+        if (typeof fetch === 'function') {
+          fetch('/api/notifier/settings')
+            .then(res => res.json())
+            .then(data => {
+              if (data.ok && data.settings) {
+                activeSettings = data.settings;
+              }
+            })
+            .catch(() => {});
+        }
+      }
+      fetchSettingsSync();
+
       /**
-       * 原生 macOS 风格 Toggle Switch 开关组件（克制雅致的 Apple 蓝，告别刺眼荧光青）
+       * 原生 macOS 风格 Toggle Switch 开关组件（克制雅致的 Apple 蓝）
        */
       function Switch(props) {
         const { checked, onChange, disabled } = props;
@@ -91,13 +110,11 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
               const sessionId = eventData.sessionId;
               if (!sessionId || sessionId === 'current') return;
 
-              // 1. 优先调用 uiWorkspace 服务跳转
               if (ctx && ctx.uiWorkspace && typeof ctx.uiWorkspace.openSession === 'function') {
                 ctx.uiWorkspace.openSession(sessionId);
                 return;
               }
 
-              // 2. 降级：DOM 智能选择侧边栏会话项
               const selector = `[data-session-id="${sessionId}"], [data-id="${sessionId}"], a[href*="${sessionId}"]`;
               const target = document.querySelector(selector);
               if (target) target.click();
@@ -111,7 +128,142 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
       }
 
       /**
-       * 极简、克制、原生质感的设置视图组件
+       * 在 DSH 窗口内滑出原生暗色浮窗 Toast（解决前台时 macOS 屏蔽横幅的问题）
+       */
+      function showInAppToast(ctx, eventData) {
+        if (typeof document === 'undefined') return;
+
+        const containerId = 'dsh-notifier-toast-container';
+        let container = document.getElementById(containerId);
+        if (!container) {
+          container = document.createElement('div');
+          container.id = containerId;
+          container.style.cssText = 'position:fixed;top:20px;right:20px;z-index:99999;display:flex;flex-direction:column;gap:10px;pointer-events:none;max-width:380px;';
+          document.body.appendChild(container);
+        }
+
+        const toast = document.createElement('div');
+        toast.style.cssText = [
+          'pointer-events:auto;',
+          'box-sizing:border-box;',
+          'width:350px;',
+          'padding:12px 14px;',
+          'border-radius:10px;',
+          'background:rgba(26, 29, 36, 0.95);',
+          'backdrop-filter:blur(24px);',
+          '-webkit-backdrop-filter:blur(24px);',
+          'border:1px solid rgba(255, 255, 255, 0.12);',
+          'box-shadow:0 8px 30px rgba(0, 0, 0, 0.45);',
+          'color:#ffffff;',
+          'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;',
+          'cursor:pointer;',
+          'transition:transform 0.22s cubic-bezier(0.2, 0, 0, 1), opacity 0.2s;',
+          'transform:translateX(30px);',
+          'opacity:0;',
+        ].join('');
+
+        const titleText = eventData.title || 'DSH 任务完成';
+        const subtitleText = eventData.subtitle || '';
+        const summaryText = eventData.summary || '';
+
+        toast.innerHTML = [
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">',
+          '  <div style="display:flex;align-items:center;gap:6px;">',
+          '    <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#0a84ff;"></span>',
+          `    <span style="font-size:13.5px;font-weight:600;color:#fff;">${titleText}</span>`,
+          subtitleText ? `    <span style="font-size:11.5px;color:#8a8f98;">· ${subtitleText}</span>` : '',
+          '  </div>',
+          '  <button type="button" class="toast-close" style="background:none;border:none;color:#8a8f98;cursor:pointer;font-size:14px;padding:0 2px;line-height:1;">×</button>',
+          '</div>',
+          summaryText ? `<div style="font-size:12px;color:#c9d1d9;line-height:1.4;margin-top:4px;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">${summaryText}</div>` : '',
+          '<div style="font-size:11px;color:#0a84ff;margin-top:6px;">点击直接查看此会话 →</div>'
+        ].join('');
+
+        let isDismissed = false;
+        const dismiss = () => {
+          if (isDismissed) return;
+          isDismissed = true;
+          toast.style.transform = 'translateX(30px)';
+          toast.style.opacity = '0';
+          setTimeout(() => toast.remove(), 250);
+        };
+
+        // 点击卡片直接跳会话
+        toast.onclick = (e) => {
+          if (e.target.classList.contains('toast-close')) {
+            e.stopPropagation();
+            dismiss();
+            return;
+          }
+          window.focus();
+          const sessionId = eventData.sessionId;
+          if (sessionId && sessionId !== 'current') {
+            if (ctx && ctx.uiWorkspace && typeof ctx.uiWorkspace.openSession === 'function') {
+              ctx.uiWorkspace.openSession(sessionId);
+            } else {
+              const el = document.querySelector(`[data-session-id="${sessionId}"], [data-id="${sessionId}"]`);
+              if (el) el.click();
+            }
+          }
+          dismiss();
+        };
+
+        container.appendChild(toast);
+
+        // 动画触发
+        requestAnimationFrame(() => {
+          toast.style.transform = 'translateX(0)';
+          toast.style.opacity = '1';
+        });
+
+        // 6秒自动淡出
+        setTimeout(dismiss, 6000);
+      }
+
+      /**
+       * 统一事件调度中心 (处理聚焦模式过滤、自动切会话、系统横幅与应用内 Toast)
+       */
+      function handleIncomingNotification(ctx, eventData) {
+        const s = activeSettings || {
+          enabled: true,
+          enableBanner: true,
+          alertTiming: 'always',
+          autoJumpSession: false,
+          enableInAppToast: true,
+        };
+
+        if (!s.enabled) return;
+
+        const isFocused = typeof document !== 'undefined' && document.hasFocus();
+
+        // 1. 检查提醒时机模式 (若选了"仅未聚焦/后台提醒"，且用户正在注视 DSH 窗口，则跳过)
+        if (s.alertTiming === 'unfocused' && isFocused && eventData.type !== 'test') {
+          return;
+        }
+
+        // 2. 检查是否开启了"自动跳转到对应会话"
+        if (s.autoJumpSession && eventData.sessionId && eventData.sessionId !== 'current') {
+          try {
+            const currentId = ctx && ctx.uiWorkspace?.mainReference?.sessionId;
+            if (currentId !== eventData.sessionId && ctx.uiWorkspace && typeof ctx.uiWorkspace.openSession === 'function') {
+              ctx.uiWorkspace.openSession(eventData.sessionId);
+            }
+          } catch (_) {}
+        }
+
+        // 3. 弹出应用内浮窗 Toast (前台 100% 可见)
+        if (s.enableInAppToast !== false) {
+          showInAppToast(ctx, eventData);
+        }
+
+        // 4. 弹出 macOS 系统通知横幅 (支持点击唤醒与跳转)
+        if (s.enableBanner !== false) {
+          sendNativeNotification(ctx, eventData);
+        }
+      }
+
+      /**
+       * 设置面板主视图
        */
       function NotifierSettingsView(props) {
         const { ctx } = props;
@@ -134,6 +286,7 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
             .then(data => {
               if (data.ok) {
                 setSettings(data.settings);
+                activeSettings = data.settings;
                 if (data.availableSounds) setSounds(data.availableSounds);
               }
             })
@@ -144,6 +297,7 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
           if (!settings) return;
           const next = { ...settings, [key]: val };
           setSettings(next);
+          activeSettings = next;
           try {
             await fetch('/api/notifier/settings', {
               method: 'POST',
@@ -161,14 +315,13 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
           if (!settings || testing) return;
           setTesting(true);
 
-          if (settings.enableBanner) {
-            sendNativeNotification(ctx, {
-              title: 'DSH 任务完成',
-              subtitle: '耗时 3.5s (测试)',
-              summary: '已为你完成代码分析与重构，点击本横幅可直接跳转回此会话。',
-              sessionId: 'current',
-            });
-          }
+          handleIncomingNotification(ctx, {
+            type: 'test',
+            title: 'DSH 任务完成',
+            subtitle: '耗时 3.5s (测试)',
+            summary: '已为你完成代码分析与重构，点击本通知可直接跳转回此会话。',
+            sessionId: 'current',
+          });
 
           try {
             await fetch('/api/notifier/test', {
@@ -195,7 +348,7 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
             maxWidth: '720px',
           }
         }, [
-          // 顶部标题栏：克制雅致、单行不换行、无彩色干扰
+          // 顶部标题栏
           React.createElement('div', {
             key: 'header',
             style: {
@@ -235,10 +388,9 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
                   marginTop: '3px',
                   lineHeight: '1.4'
                 }
-              }, '管理 macOS 原生通知横幅、提示音效与会话智能命名。')
+              }, '管理系统通知、应用内浮窗、聚焦时提醒模式与会话智能命名。')
             ]),
 
-            // 沉稳低调的灰色微框测试按钮，拒绝大色块
             React.createElement('button', {
               key: 'btn-test',
               type: 'button',
@@ -275,7 +427,7 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
           }, [
             React.createElement('div', { key: 'l1' }, [
               React.createElement('div', { style: { fontSize: '13.5px', fontWeight: '450' } }, '启用完成通知'),
-              React.createElement('div', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-caption, #8a8f98)', marginTop: '2px' } }, '总开关：对话完成时进行通知提醒')
+              React.createElement('div', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-caption, #8a8f98)', marginTop: '2px' } }, '总开关：对话完成或需要决策时进行通知提醒')
             ]),
             React.createElement(Switch, {
               key: 'sw1',
@@ -284,7 +436,93 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
             })
           ]),
 
-          // Row 2: macOS 系统通知横幅
+          // Row 2: 提醒时机模式（全量提醒 vs 仅在后台/未聚焦时提醒）
+          React.createElement('div', {
+            key: 'row-timing',
+            style: {
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '12px 0',
+              borderBottom: '1px solid var(--dsw-alias-border-l1, rgba(255, 255, 255, 0.06))',
+              opacity: settings.enabled ? 1 : 0.45,
+            }
+          }, [
+            React.createElement('div', { key: 'l-timing' }, [
+              React.createElement('div', { style: { fontSize: '13.5px', fontWeight: '450' } }, '提醒时机'),
+              React.createElement('div', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-caption, #8a8f98)', marginTop: '2px' } }, '全量提醒：无论当前是否在看 DSH 均提醒；仅未聚焦：在 DSH 内操作时静默，最小化或切走时才提醒')
+            ]),
+            React.createElement('select', {
+              key: 'sel-timing',
+              disabled: !settings.enabled,
+              value: settings.alertTiming || 'always',
+              onChange: (e) => updateSetting('alertTiming', e.target.value),
+              style: {
+                height: '26px',
+                padding: '0 8px',
+                borderRadius: '6px',
+                border: '1px solid var(--dsw-alias-border-l2, rgba(255, 255, 255, 0.12))',
+                backgroundColor: 'var(--dsw-alias-bg-module-platform, rgba(255, 255, 255, 0.05))',
+                color: 'inherit',
+                fontSize: '12px',
+                cursor: !settings.enabled ? 'not-allowed' : 'pointer',
+                outline: 'none',
+              }
+            }, [
+              React.createElement('option', { key: 'opt1', value: 'always' }, '全量提醒（始终提醒 - 推荐）'),
+              React.createElement('option', { key: 'opt2', value: 'unfocused' }, '仅在未聚焦 / 后台时提醒')
+            ])
+          ]),
+
+          // Row 3: 自动跳转到对应会话
+          React.createElement('div', {
+            key: 'row-autojump',
+            style: {
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '12px 0',
+              borderBottom: '1px solid var(--dsw-alias-border-l1, rgba(255, 255, 255, 0.06))',
+              opacity: settings.enabled ? 1 : 0.45,
+            }
+          }, [
+            React.createElement('div', { key: 'l-jump' }, [
+              React.createElement('div', { style: { fontSize: '13.5px', fontWeight: '450' } }, '自动跳转到对应会话'),
+              React.createElement('div', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-caption, #8a8f98)', marginTop: '2px' } }, '开启后，后台任务完成或停下来等待审批时，无需手动点击通知，DSH 自动将视图切入该会话')
+            ]),
+            React.createElement(Switch, {
+              key: 'sw-jump',
+              disabled: !settings.enabled,
+              checked: !!settings.autoJumpSession,
+              onChange: (val) => updateSetting('autoJumpSession', val)
+            })
+          ]),
+
+          // Row 4: DSH 应用内浮窗通知
+          React.createElement('div', {
+            key: 'row-toast',
+            style: {
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '12px 0',
+              borderBottom: '1px solid var(--dsw-alias-border-l1, rgba(255, 255, 255, 0.06))',
+              opacity: settings.enabled ? 1 : 0.45,
+            }
+          }, [
+            React.createElement('div', { key: 'l-toast' }, [
+              React.createElement('div', { style: { fontSize: '13.5px', fontWeight: '450' } }, 'DSH 应用内浮窗通知'),
+              React.createElement('div', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-caption, #8a8f98)', marginTop: '2px' } }, '在 DSH 窗口右上角滑出轻量浮窗提示，彻底解决 macOS 系统在前台时默认静默屏蔽横幅的问题')
+            ]),
+            React.createElement(Switch, {
+              key: 'sw-toast',
+              disabled: !settings.enabled,
+              checked: settings.enableInAppToast !== false,
+              onChange: (val) => updateSetting('enableInAppToast', val)
+            })
+          ]),
+
+          // Row 5: macOS 系统通知横幅
           React.createElement('div', {
             key: 'row-banner',
             style: {
@@ -308,7 +546,7 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
             })
           ]),
 
-          // Row 3: 完成提示音
+          // Row 6: 完成提示音
           React.createElement('div', {
             key: 'row-sound',
             style: {
@@ -351,7 +589,7 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
             ])
           ]),
 
-          // Row 4: 等待权限审批与 Plan 提交通知
+          // Row 7: 等待权限审批与 Plan 提交通知
           React.createElement('div', {
             key: 'row-approval',
             style: {
@@ -375,7 +613,7 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
             })
           ]),
 
-          // Row 5: 最小提醒耗时阈值 (已彻底移除幽灵开关，仅保留微调输入框)
+          // Row 8: 最小提醒耗时阈值
           React.createElement('div', {
             key: 'row-duration',
             style: {
@@ -417,7 +655,7 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
             ])
           ]),
 
-          // Row 6: 首轮对话智能提炼标题
+          // Row 9: 首轮对话智能提炼标题
           React.createElement('div', {
             key: 'row-autotitle',
             style: {
@@ -441,7 +679,7 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
       }
 
       /**
-       * 监听系统通知事件并由前端弹出带原生白鲸图标与跳转能力的 Notification
+       * 监听系统通知事件并由统一调度中心分发 (支持前台 Toast、全量/未聚焦判断、自动切会话)
        */
       function setupNotificationListener(ctx) {
         if (typeof window === 'undefined') return;
@@ -459,7 +697,7 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
             if (!e.data) return;
             try {
               const eventData = JSON.parse(e.data);
-              sendNativeNotification(ctx, eventData);
+              handleIncomingNotification(ctx, eventData);
             } catch (err) {
               console.warn('[dsh-completion-notifier] parse event error:', err);
             }
