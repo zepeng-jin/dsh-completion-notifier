@@ -38,6 +38,7 @@ export class NotifierService {
     this.settings = { ...initialConfig };
     this.turnStartTimes = new Map();
     this.lastAssistantTexts = new Map();
+    this.broadcastToClients = null;
     this.init();
   }
 
@@ -59,13 +60,33 @@ export class NotifierService {
 
   async testNotify(customSettings) {
     const s = { ...this.settings, ...(customSettings || {}) };
+
     if (s.enableSound) {
-      playSound(s.soundName);
+      playSound(s.soundName || 'Glass');
     }
+
     if (s.enableBanner) {
       const sampleSummary = '已为你完成代码分析与重构，并成功通过所有测试用例。';
-      showBanner('DSH 任务完成', sampleSummary, '⚡️ 耗时 3.5 秒 (测试)', s.soundName);
+      const eventData = {
+        type: 'test',
+        title: 'DSH 通知测试',
+        subtitle: '⚡️ 耗时 3.5s (测试)',
+        summary: sampleSummary,
+        sessionId: 'current',
+      };
+
+      // 优先通过 SSE 发送给前端渲染进程弹出（具备 DSH 原生图标与点击跳转）
+      let clientCount = 0;
+      if (typeof this.broadcastToClients === 'function') {
+        clientCount = this.broadcastToClients(eventData);
+      }
+
+      // 若无前端连接，走 osascript 兜底
+      if (clientCount === 0) {
+        showBanner('DSH 通知测试', sampleSummary, '⚡️ 耗时 3.5s (测试)', s.soundName);
+      }
     }
+
     if (s.enableSpeech && s.speechText) {
       speakText(s.speechText);
     }
@@ -81,7 +102,7 @@ export class NotifierService {
         this.lastAssistantTexts.set(sessionId, '');
       }
 
-      // 2. 收集本轮 Assistant 文本
+      // 2. 实时收集本轮 Assistant 文本
       if (event.type === 'assistant/message') {
         const content = event.data?.message?.content || [];
         const textPieces = [];
@@ -95,7 +116,7 @@ export class NotifierService {
         }
       }
 
-      // 3. 轮次结算
+      // 3. 轮次完成
       if (event.type === 'turn/end') {
         const startTime = this.turnStartTimes.get(sessionId) || Date.now();
         const durationSec = Math.round(((Date.now() - startTime) / 1000) * 10) / 10;
@@ -108,10 +129,60 @@ export class NotifierService {
         const reason = event.data?.reason?.kind;
 
         if (reason === 'completed') {
-          triggerNotification('completed', { durationSec, summary }, this.settings);
+          // 阈值过滤
+          if (durationSec < (this.settings.minDurationSec || 0)) {
+            return;
+          }
+
+          if (this.settings.enableSound) {
+            playSound(this.settings.soundName || 'Glass');
+          }
+
+          if (this.settings.enableBanner) {
+            const eventData = {
+              type: 'completed',
+              title: 'DSH 任务完成',
+              subtitle: `⚡️ 耗时 ${durationSec}s`,
+              summary,
+              sessionId,
+              durationSec,
+            };
+
+            let clientCount = 0;
+            if (typeof this.broadcastToClients === 'function') {
+              clientCount = this.broadcastToClients(eventData);
+            }
+
+            if (clientCount === 0) {
+              triggerNotification('completed', { durationSec, summary }, this.settings);
+            }
+          }
+
+          if (this.settings.enableSpeech && this.settings.speechText) {
+            speakText(this.settings.speechText);
+          }
         } else if (reason === 'error') {
-          const errMsg = event.data?.reason?.error?.message || '任务或工具调用遇到异常';
-          triggerNotification('error', { durationSec, summary: errMsg }, this.settings);
+          if (this.settings.notifyOnError) {
+            playSound('Basso');
+            const errMsg = event.data?.reason?.error?.message || '任务或工具调用遇到异常';
+            const eventData = {
+              type: 'error',
+              title: 'DSH 执行异常',
+              subtitle: `耗时 ${durationSec}s`,
+              summary: errMsg,
+              sessionId,
+              durationSec,
+            };
+
+            let clientCount = 0;
+            if (typeof this.broadcastToClients === 'function') {
+              clientCount = this.broadcastToClients(eventData);
+            }
+
+            if (clientCount === 0) {
+              triggerNotification('error', { durationSec, summary: errMsg }, this.settings);
+            }
+          }
         }
       }
     });

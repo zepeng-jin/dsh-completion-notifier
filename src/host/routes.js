@@ -25,7 +25,45 @@ function readBody(req) {
 }
 
 export function makeNotifierRoutes(service) {
+  const sseClients = new Set();
+
+  // 提供给 service 广播事件到所有前端连接
+  service.broadcastToClients = (eventData) => {
+    const payload = `data: ${JSON.stringify(eventData)}\n\n`;
+    for (const client of sseClients) {
+      try {
+        client.write(payload);
+      } catch (e) {
+        sseClients.delete(client);
+      }
+    }
+    return sseClients.size;
+  };
+
   return [
+    {
+      kind: 'exact',
+      path: '/api/notifier/events',
+      handler: (req, res) => {
+        if (req.method !== 'GET') {
+          res.writeHead(405);
+          res.end();
+          return;
+        }
+
+        res.writeHead(200, {
+          'content-type': 'text/event-stream',
+          'cache-control': 'no-cache',
+          'connection': 'keep-alive',
+        });
+        res.write('retry: 5000\n\n');
+
+        sseClients.add(res);
+        req.on('close', () => {
+          sseClients.delete(res);
+        });
+      },
+    },
     {
       kind: 'exact',
       path: '/api/notifier/settings',

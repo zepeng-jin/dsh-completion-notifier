@@ -1,8 +1,9 @@
 /**
  * dsh-completion-notifier client bundle
- * Mounts the NotifierSettingsCard into DSH Settings slots:
- * 1. 'settings.general.item' (Vanilla DSH General Settings)
- * 2. 'web-ui.plugin.item' (DSH Web UI Plugin Center)
+ * Features:
+ * 1. Native macOS Notification via Web Notification API (DSH Whale Icon)
+ * 2. Click notification to focus window & jump to session
+ * 3. Modern macOS-style Toggle Switches in Settings UI (no ugly square checkboxes)
  */
 
 if (typeof window !== 'undefined' && window.__ModuleLoader__) {
@@ -16,7 +17,7 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
       const React = require('react');
 
       /**
-       * 原生 macOS 风格 Toggle Switch 开关（告别生硬方框复选框）
+       * 原生 macOS 风格 Toggle Switch 开关组件（告别生硬方框复选框）
        */
       function Switch(props) {
         const { checked, onChange, disabled } = props;
@@ -124,7 +125,7 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
             color: 'var(--dsw-alias-label-primary, inherit)',
           }
         }, [
-          // 顶部标题与测试按钮栏
+          // 顶部标题与测试操作栏
           React.createElement('div', {
             key: 'header',
             style: {
@@ -161,7 +162,7 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
               React.createElement('div', {
                 key: 'p',
                 style: { fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)', lineHeight: '1.4' }
-              }, '在 AI 任务执行完成时，通过 macOS 系统通知横幅、原生应用图标、对话摘要与清脆提示音提醒你。')
+              }, '在 AI 任务执行完成时，通过 macOS 系统通知横幅、原生应用图标、对话摘要与清脆提示音提醒你，点击横幅可直接跳转会话。')
             ]),
             React.createElement('button', {
               key: 'btn',
@@ -226,7 +227,7 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
           }, [
             React.createElement('div', { key: 'l2' }, [
               React.createElement('div', { style: { fontSize: '13.5px', fontWeight: '500' } }, 'macOS 系统通知横幅'),
-              React.createElement('div', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)', marginTop: '2px' } }, '通知中心弹出横幅提醒 (附带 DSH 原生图标、单轮耗时与对话精炼摘要)')
+              React.createElement('div', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)', marginTop: '2px' } }, '通知中心弹出横幅提醒 (附带 DSH 原生图标、单轮耗时与对话摘要，点击跳转会话)')
             ]),
             React.createElement(Switch, {
               key: 'sw2',
@@ -323,7 +324,92 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
         ]);
       }
 
+      /**
+       * 监听系统通知事件并由前端弹出带原生图标与跳转能力的 Notification
+       */
+      function setupNotificationListener(ctx) {
+        if (typeof window === 'undefined') return;
+
+        // 请求系统通知权限
+        if (typeof window.Notification !== 'undefined' && window.Notification.permission === 'default') {
+          try {
+            window.Notification.requestPermission();
+          } catch (_) {}
+        }
+
+        // 打开 SSE 实时通道
+        try {
+          const eventSource = new EventSource('/api/notifier/events');
+
+          eventSource.onmessage = (e) => {
+            if (!e.data) return;
+            try {
+              const eventData = JSON.parse(e.data);
+              showClientNotification(ctx, eventData);
+            } catch (err) {
+              console.warn('[dsh-completion-notifier] parse event error:', err);
+            }
+          };
+
+          eventSource.onerror = () => {
+            // 自动重连机制
+          };
+
+          ctx.effect(() => () => {
+            eventSource.close();
+          }, 'dsh-completion-notifier: close event source');
+        } catch (err) {
+          console.warn('[dsh-completion-notifier] SSE setup failed:', err);
+        }
+      }
+
+      function showClientNotification(ctx, eventData) {
+        if (typeof window === 'undefined' || typeof window.Notification === 'undefined') return;
+
+        const title = eventData.title || 'DSH 任务完成';
+        const body = eventData.subtitle
+          ? `${eventData.subtitle} · ${eventData.summary || '对话已完成'}`
+          : (eventData.summary || '对话已完成');
+
+        try {
+          const notification = new window.Notification(title, {
+            body,
+            tag: eventData.sessionId || 'dsh-notify',
+            renotify: true,
+          });
+
+          // 点击通知事件：聚焦并跳转会话
+          notification.onclick = () => {
+            try {
+              window.focus();
+
+              const sessionId = eventData.sessionId;
+              if (!sessionId || sessionId === 'current') return;
+
+              // 1. 通过 uiWorkspace 服务切换会话
+              if (ctx.uiWorkspace && typeof ctx.uiWorkspace.openSession === 'function') {
+                ctx.uiWorkspace.openSession(sessionId);
+                return;
+              }
+
+              // 2. DOM 降级选择器
+              const sessionEl = document.querySelector(`[data-session-id="${sessionId}"], [data-id="${sessionId}"]`);
+              if (sessionEl) {
+                sessionEl.click();
+              }
+            } catch (clickErr) {
+              console.warn('[dsh-completion-notifier] click navigate error:', clickErr);
+            }
+          };
+        } catch (err) {
+          console.warn('[dsh-completion-notifier] show notification error:', err);
+        }
+      }
+
       function apply(ctx) {
+        // 启动后台事件监听，负责原生通知分发与会话跳转
+        setupNotificationListener(ctx);
+
         // 注册到 DSH 设置通用分区 (settings.general.item)
         if (ctx.slots) {
           ctx.slots.inject('settings.general.item', () =>
@@ -346,7 +432,7 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
       }
 
       exports.apply = apply;
-      exports.inject = ['slots'];
+      exports.inject = ['slots', 'uiWorkspace'];
       return module.exports;
     }
   });
