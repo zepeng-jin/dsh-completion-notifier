@@ -592,25 +592,29 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
         if (typeof document === 'undefined') return;
 
         ctx.effect(() => {
-          const bellSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>';
-          const maskUrl = 'data:image/svg+xml,' + encodeURIComponent(bellSvg);
+          // 精确 16x16 视口微型铃铛，线条 1.35px，视觉粗细与尺寸与官方 16x16 图标 100% 对齐
+          const bellSvg16 = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="#000" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5a4 4 0 0 1 8 0c0 4.5 1.8 6 1.8 6H2.2s1.8-1.5 1.8-6"/><path d="M6.8 13.8a1.3 1.3 0 0 0 2.4 0"/></svg>';
+          const maskUrl = 'data:image/svg+xml,' + encodeURIComponent(bellSvg16);
 
           const tag = document.createElement('style');
           tag.dataset.plugin = 'dsh-completion-notifier';
           tag.textContent = [
-            '[data-dsh-notifier-nav] > svg { display: none !important; }',
-            '[data-dsh-notifier-nav]::before {',
-            '  content: "";',
-            '  display: inline-block;',
-            '  width: 16px;',
-            '  height: 16px;',
-            '  margin-right: 8px;',
-            '  background-color: currentColor;',
-            `  -webkit-mask: url("${maskUrl}") no-repeat center;`,
-            `  mask: url("${maskUrl}") no-repeat center;`,
-            '  -webkit-mask-size: contain;',
-            '  mask-size: contain;',
-            '  flex-shrink: 0;',
+            // 彻底废除 ::before，直接精准作用在官方原生生成的 <svg> 图标节点上！
+            // 由官方自身的 Flex 容器、padding 与 gap: 8px 控制，实现 100% 像素级对齐！
+            '[data-dsh-notifier-nav] > svg {',
+            '  width: 16px !important;',
+            '  height: 16px !important;',
+            '  flex: none !important;',
+            '  box-sizing: border-box !important;',
+            '  background-color: currentColor !important;',
+            `  -webkit-mask: url("${maskUrl}") no-repeat center !important;`,
+            `  mask: url("${maskUrl}") no-repeat center !important;`,
+            '  -webkit-mask-size: 16px 16px !important;',
+            '  mask-size: 16px 16px !important;',
+            '}',
+            // 隐藏原有 svg 内部自带的 gear path
+            '[data-dsh-notifier-nav] > svg * {',
+            '  display: none !important;',
             '}',
           ].join('\n');
           document.head.appendChild(tag);
