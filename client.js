@@ -15,6 +15,45 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
 
       const React = require('react');
 
+      /**
+       * 原生 macOS 风格 Toggle Switch 开关（告别生硬方框复选框）
+       */
+      function Switch(props) {
+        const { checked, onChange, disabled } = props;
+        return React.createElement('div', {
+          onClick: () => {
+            if (!disabled && onChange) onChange(!checked);
+          },
+          style: {
+            width: '40px',
+            height: '22px',
+            borderRadius: '999px',
+            backgroundColor: checked
+              ? 'var(--dsw-alias-state-business-primary, #007aff)'
+              : 'var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.25))',
+            position: 'relative',
+            cursor: disabled ? 'not-allowed' : 'pointer',
+            transition: 'background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+            flexShrink: 0,
+            opacity: disabled ? 0.45 : 1,
+            userSelect: 'none',
+          }
+        }, React.createElement('div', {
+          style: {
+            width: '18px',
+            height: '18px',
+            borderRadius: '50%',
+            backgroundColor: '#ffffff',
+            position: 'absolute',
+            top: '2px',
+            left: '2px',
+            transform: checked ? 'translateX(18px)' : 'translateX(0)',
+            transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.2)',
+          }
+        }));
+      }
+
       function NotifierSettingsCard() {
         const [settings, setSettings] = React.useState(null);
         const [sounds, setSounds] = React.useState([
@@ -51,7 +90,7 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
               headers: { 'content-type': 'application/json' },
               body: JSON.stringify({ [key]: val }),
             });
-            setTip('配置已自动保存');
+            setTip('配置已保存');
             setTimeout(() => setTip(''), 2000);
           } catch {
             setTip('保存失败');
@@ -80,29 +119,49 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
 
         return React.createElement('div', {
           style: {
-            padding: '16px 20px',
-            margin: '12px 0',
-            borderRadius: '12px',
-            backgroundColor: 'var(--dsw-alias-bg-module-platform, rgba(128,128,128,0.06))',
-            border: '1px solid var(--dsw-alias-border-l2, rgba(128,128,128,0.2))',
+            padding: '8px 0 16px 0',
             fontFamily: 'inherit',
             color: 'var(--dsw-alias-label-primary, inherit)',
           }
         }, [
-          // Header
+          // 顶部标题与测试按钮栏
           React.createElement('div', {
             key: 'header',
-            style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }
+            style: {
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingBottom: '14px',
+              borderBottom: '1px solid var(--dsw-alias-border-l1, rgba(128,128,128,0.12))',
+              gap: '12px'
+            }
           }, [
             React.createElement('div', { key: 'title-box' }, [
-              React.createElement('h3', {
-                key: 'h3',
-                style: { margin: '0 0 4px 0', fontSize: '15px', fontWeight: '600' }
-              }, '通知'),
-              React.createElement('p', {
+              React.createElement('div', {
+                key: 'title-row',
+                style: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }
+              }, [
+                React.createElement('span', { key: 'icon', style: { fontSize: '16px' } }, '🔔'),
+                React.createElement('span', {
+                  key: 'h3',
+                  style: { fontSize: '15px', fontWeight: '600' }
+                }, '完成通知与音效'),
+                tip && React.createElement('span', {
+                  key: 'tip',
+                  style: {
+                    padding: '2px 8px',
+                    borderRadius: '999px',
+                    backgroundColor: 'rgba(52, 199, 89, 0.15)',
+                    color: '#34c759',
+                    fontSize: '11px',
+                    fontWeight: '500',
+                  }
+                }, tip)
+              ]),
+              React.createElement('div', {
                 key: 'p',
-                style: { margin: 0, fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)' }
-              }, '在 AI 任务执行完成时，通过 macOS 系统通知横幅与提示音提醒你。')
+                style: { fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)', lineHeight: '1.4' }
+              }, '在 AI 任务执行完成时，通过 macOS 系统通知横幅、原生应用图标、对话摘要与清脆提示音提醒你。')
             ]),
             React.createElement('button', {
               key: 'btn',
@@ -110,76 +169,88 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
               onClick: handleTest,
               disabled: testing || !settings.enabled,
               style: {
-                padding: '6px 14px',
-                borderRadius: '8px',
-                backgroundColor: settings.enabled ? 'var(--dsw-alias-state-business-primary, #007aff)' : '#ccc',
-                color: '#fff',
+                height: '32px',
+                padding: '0 14px',
+                borderRadius: '16px',
+                backgroundColor: settings.enabled
+                  ? 'var(--dsw-alias-state-business-primary, #007aff)'
+                  : 'var(--dsw-alias-border-l2, #ccc)',
+                color: '#ffffff',
                 border: 'none',
                 fontSize: '12px',
                 fontWeight: '500',
                 cursor: settings.enabled ? 'pointer' : 'not-allowed',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                flexShrink: 0,
+                transition: 'opacity 0.15s, transform 0.1s',
+                boxShadow: settings.enabled ? '0 1px 3px rgba(0, 122, 255, 0.25)' : 'none',
               }
             }, testing ? '测试中...' : '🔔 测试通知与声音')
           ]),
 
-          tip && React.createElement('div', {
-            key: 'tip',
-            style: {
-              padding: '4px 10px',
-              marginBottom: '10px',
-              borderRadius: '6px',
-              backgroundColor: 'rgba(52, 199, 89, 0.15)',
-              color: '#34c759',
-              fontSize: '12px',
-              display: 'inline-block'
-            }
-          }, tip),
-
-          // Row 1: 总开关
+          // Row 1: 启用完成通知总开关
           React.createElement('div', {
             key: 'row-enable',
-            style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--dsw-alias-border-l1, rgba(128,128,128,0.1))' }
+            style: {
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '13px 0',
+              borderBottom: '1px solid var(--dsw-alias-border-l1, rgba(128,128,128,0.1))'
+            }
           }, [
             React.createElement('div', { key: 'l1' }, [
-              React.createElement('div', { style: { fontSize: '14px', fontWeight: '500' } }, '启用完成通知'),
-              React.createElement('div', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)' } }, '总开关：对话完成时进行通知')
+              React.createElement('div', { style: { fontSize: '13.5px', fontWeight: '500' } }, '启用完成通知'),
+              React.createElement('div', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)', marginTop: '2px' } }, '总开关：对话完成时进行通知提醒')
             ]),
-            React.createElement('input', {
-              key: 'cb1',
-              type: 'checkbox',
-              style: { width: '38px', height: '20px', cursor: 'pointer' },
+            React.createElement(Switch, {
+              key: 'sw1',
               checked: !!settings.enabled,
-              onChange: (e) => updateSetting('enabled', e.target.checked)
+              onChange: (val) => updateSetting('enabled', val)
             })
           ]),
 
-          // Row 2: 系统横幅
+          // Row 2: macOS 系统通知横幅
           React.createElement('div', {
             key: 'row-banner',
-            style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--dsw-alias-border-l1, rgba(128,128,128,0.1))' }
+            style: {
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '13px 0',
+              borderBottom: '1px solid var(--dsw-alias-border-l1, rgba(128,128,128,0.1))',
+              opacity: settings.enabled ? 1 : 0.5
+            }
           }, [
             React.createElement('div', { key: 'l2' }, [
-              React.createElement('div', { style: { fontSize: '14px', fontWeight: '500' } }, 'macOS 系统横幅'),
-              React.createElement('div', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)' } }, '通知中心弹出任务完成横幅 (含耗时统计)')
+              React.createElement('div', { style: { fontSize: '13.5px', fontWeight: '500' } }, 'macOS 系统通知横幅'),
+              React.createElement('div', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)', marginTop: '2px' } }, '通知中心弹出横幅提醒 (附带 DSH 原生图标、单轮耗时与对话精炼摘要)')
             ]),
-            React.createElement('input', {
-              key: 'cb2',
-              type: 'checkbox',
+            React.createElement(Switch, {
+              key: 'sw2',
               disabled: !settings.enabled,
-              style: { width: '38px', height: '20px', cursor: 'pointer' },
               checked: !!settings.enableBanner,
-              onChange: (e) => updateSetting('enableBanner', e.target.checked)
+              onChange: (val) => updateSetting('enableBanner', val)
             })
           ]),
 
-          // Row 3: 声音选择
+          // Row 3: 完成提示音与声音选择
           React.createElement('div', {
             key: 'row-sound',
-            style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--dsw-alias-border-l1, rgba(128,128,128,0.1))' }
+            style: {
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '13px 0',
+              borderBottom: '1px solid var(--dsw-alias-border-l1, rgba(128,128,128,0.1))',
+              opacity: settings.enabled ? 1 : 0.5
+            }
           }, [
             React.createElement('div', { key: 'l3' }, [
-              React.createElement('div', { style: { fontSize: '14px', fontWeight: '500' } }, '完成提示音'),
-              React.createElement('div', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)' } }, '结算时播放的系统音效')
+              React.createElement('div', { style: { fontSize: '13.5px', fontWeight: '500' } }, '完成提示音'),
+              React.createElement('div', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)', marginTop: '2px' } }, '任务结算时播放的系统高保真音效')
             ]),
             React.createElement('div', { key: 'r3', style: { display: 'flex', alignItems: 'center', gap: '10px' } }, [
               React.createElement('select', {
@@ -188,34 +259,41 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
                 value: settings.soundName || 'Glass',
                 onChange: (e) => updateSetting('soundName', e.target.value),
                 style: {
-                  height: '30px',
-                  padding: '0 8px',
-                  borderRadius: '6px',
-                  border: '1px solid var(--dsw-alias-border-l2, #ccc)',
-                  backgroundColor: 'var(--dsw-alias-bg-base, #fff)',
+                  height: '28px',
+                  padding: '0 10px',
+                  borderRadius: '8px',
+                  border: '1px solid var(--dsw-alias-border-l2, rgba(128,128,128,0.25))',
+                  backgroundColor: 'var(--dsw-alias-bg-module-platform, rgba(128,128,128,0.08))',
                   color: 'inherit',
                   fontSize: '12px',
+                  cursor: (!settings.enabled || !settings.enableSound) ? 'not-allowed' : 'pointer',
+                  outline: 'none',
                 }
               }, sounds.map(s => React.createElement('option', { key: s.id, value: s.id }, s.name))),
-              React.createElement('input', {
-                key: 'cb3',
-                type: 'checkbox',
+              React.createElement(Switch, {
+                key: 'sw3',
                 disabled: !settings.enabled,
-                style: { width: '38px', height: '20px', cursor: 'pointer' },
                 checked: !!settings.enableSound,
-                onChange: (e) => updateSetting('enableSound', e.target.checked)
+                onChange: (val) => updateSetting('enableSound', val)
               })
             ])
           ]),
 
-          // Row 4: 耗时阈值
+          // Row 4: 最小提醒耗时阈值
           React.createElement('div', {
             key: 'row-duration',
-            style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0' }
+            style: {
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '13px 0',
+              borderBottom: '1px solid var(--dsw-alias-border-l1, rgba(128,128,128,0.1))',
+              opacity: settings.enabled ? 1 : 0.5
+            }
           }, [
             React.createElement('div', { key: 'l4' }, [
-              React.createElement('div', { style: { fontSize: '14px', fontWeight: '500' } }, '最小提醒阈值 (秒)'),
-              React.createElement('div', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)' } }, '任务耗时超过该值才提醒 (默认 3 秒，设为 0 提醒所有)')
+              React.createElement('div', { style: { fontSize: '13.5px', fontWeight: '500' } }, '最小提醒耗时阈值 (秒)'),
+              React.createElement('div', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)', marginTop: '2px' } }, '仅对单轮耗时超过该时长的任务提醒 (设为 0 秒提醒全部，避免日常短句快问快答频繁打扰)')
             ]),
             React.createElement('div', { key: 'r4', style: { display: 'flex', alignItems: 'center', gap: '6px' } }, [
               React.createElement('input', {
@@ -227,15 +305,16 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
                 value: settings.minDurationSec ?? 3,
                 onChange: (e) => updateSetting('minDurationSec', Math.max(0, parseInt(e.target.value, 10) || 0)),
                 style: {
-                  width: '60px',
+                  width: '54px',
                   height: '28px',
                   padding: '0 6px',
-                  borderRadius: '6px',
-                  border: '1px solid var(--dsw-alias-border-l2, #ccc)',
-                  backgroundColor: 'var(--dsw-alias-bg-base, #fff)',
+                  borderRadius: '8px',
+                  border: '1px solid var(--dsw-alias-border-l2, rgba(128,128,128,0.25))',
+                  backgroundColor: 'var(--dsw-alias-bg-module-platform, rgba(128,128,128,0.08))',
                   color: 'inherit',
                   textAlign: 'center',
                   fontSize: '12px',
+                  outline: 'none',
                 }
               }),
               React.createElement('span', { key: 'unit', style: { fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)' } }, '秒')

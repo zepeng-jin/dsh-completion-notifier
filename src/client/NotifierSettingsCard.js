@@ -1,6 +1,48 @@
 import React, { useState, useEffect } from 'react';
 import { zh, en } from './locales.js';
 
+/**
+ * 原生 macOS 风格 Toggle Switch 开关组件（告别生硬方框复选框）
+ */
+function Switch({ checked, onChange, disabled }) {
+  return (
+    <div
+      onClick={() => {
+        if (!disabled && onChange) onChange(!checked);
+      }}
+      style={{
+        width: '40px',
+        height: '22px',
+        borderRadius: '999px',
+        backgroundColor: checked
+          ? 'var(--dsw-alias-state-business-primary, #007aff)'
+          : 'var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.25))',
+        position: 'relative',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        transition: 'background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+        flexShrink: 0,
+        opacity: disabled ? 0.45 : 1,
+        userSelect: 'none',
+      }}
+    >
+      <div
+        style={{
+          width: '18px',
+          height: '18px',
+          borderRadius: '50%',
+          backgroundColor: '#ffffff',
+          position: 'absolute',
+          top: '2px',
+          left: '2px',
+          transform: checked ? 'translateX(18px)' : 'translateX(0)',
+          transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.2)',
+        }}
+      />
+    </div>
+  );
+}
+
 export function NotifierSettingsCard() {
   const isZh = typeof document !== 'undefined' && (document.documentElement.lang || '').toLowerCase().startsWith('zh');
   const t = isZh ? zh : en;
@@ -15,11 +57,10 @@ export function NotifierSettingsCard() {
     { id: 'Purr', name: 'Purr (柔和呼噜声)' },
     { id: 'Funk', name: 'Funk (活力弹拨声)' },
   ]);
-  const [loading, setLoading] = useState(true);
   const [testing, setTesting] = useState(false);
   const [tip, setTip] = useState('');
 
-  // 加载当前设置
+  // 加载设置
   useEffect(() => {
     fetch('/api/notifier/settings')
       .then(res => res.json())
@@ -29,13 +70,9 @@ export function NotifierSettingsCard() {
           if (data.availableSounds) setSounds(data.availableSounds);
         }
       })
-      .catch(err => {
-        console.error('[dsh-completion-notifier] load error:', err);
-      })
-      .finally(() => setLoading(false));
+      .catch(() => {});
   }, []);
 
-  // 保存设置并更新状态
   const updateSetting = async (key, val) => {
     if (!settings) return;
     const next = { ...settings, [key]: val };
@@ -46,236 +83,237 @@ export function NotifierSettingsCard() {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ [key]: val }),
       });
-      setTip(t.saveSuccess);
+      setTip(t.saveSuccess || '配置已保存');
       setTimeout(() => setTip(''), 2000);
-    } catch (err) {
-      console.error('[dsh-completion-notifier] save error:', err);
-      setTip(t.error);
+    } catch {
+      setTip(t.error || '保存失败');
     }
   };
 
-  // 测试触发通知
   const handleTest = async () => {
     if (!settings || testing) return;
     setTesting(true);
-    setTip('');
     try {
       await fetch('/api/notifier/test', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(settings),
       });
-      setTip(t.testSuccess);
-    } catch (err) {
-      setTip(t.error);
+      setTip(t.testSuccess || '测试通知已发出！');
+    } catch {
+      setTip(t.error || '测试请求失败');
     } finally {
       setTesting(false);
       setTimeout(() => setTip(''), 3000);
     }
   };
 
-  if (loading) {
-    return <div style={{ padding: '16px', color: 'var(--dsw-alias-label-caption, #888)' }}>加载设置中...</div>;
-  }
-
-  if (!settings) {
-    return null;
-  }
-
-  const containerStyle = {
-    padding: '20px',
-    margin: '12px 0',
-    borderRadius: '12px',
-    backgroundColor: 'var(--dsw-alias-bg-module-platform, rgba(128,128,128,0.06))',
-    border: '1px solid var(--dsw-alias-border-l2, rgba(128,128,128,0.2))',
-    fontFamily: 'inherit',
-    color: 'var(--dsw-alias-label-primary, inherit)',
-  };
-
-  const rowStyle = {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '10px 0',
-    borderBottom: '1px solid var(--dsw-alias-border-l1, rgba(128,128,128,0.1))',
-  };
-
-  const labelBoxStyle = {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '3px',
-  };
-
-  const labelStyle = {
-    fontSize: '14px',
-    fontWeight: '500',
-  };
-
-  const hintStyle = {
-    fontSize: '12px',
-    color: 'var(--dsw-alias-label-caption, #888)',
-  };
-
-  const selectStyle = {
-    height: '32px',
-    padding: '0 10px',
-    borderRadius: '8px',
-    border: '1px solid var(--dsw-alias-border-l2, #ccc)',
-    backgroundColor: 'var(--dsw-alias-bg-base, #fff)',
-    color: 'inherit',
-    fontSize: '13px',
-    outline: 'none',
-  };
-
-  const inputNumberStyle = {
-    width: '70px',
-    height: '30px',
-    padding: '0 8px',
-    borderRadius: '6px',
-    border: '1px solid var(--dsw-alias-border-l2, #ccc)',
-    backgroundColor: 'var(--dsw-alias-bg-base, #fff)',
-    color: 'inherit',
-    textAlign: 'center',
-    fontSize: '13px',
-  };
-
-  const switchStyle = {
-    width: '40px',
-    height: '22px',
-    cursor: 'pointer',
-    accentColor: 'var(--dsw-alias-state-business-primary, #007aff)',
-  };
+  if (!settings) return null;
 
   return (
-    <div style={containerStyle}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+    <div
+      style={{
+        padding: '8px 0 16px 0',
+        fontFamily: 'inherit',
+        color: 'var(--dsw-alias-label-primary, inherit)',
+      }}
+    >
+      {/* 模块顶部标题与测试操作栏 */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingBottom: '14px',
+          borderBottom: '1px solid var(--dsw-alias-border-l1, rgba(128,128,128,0.12))',
+          gap: '12px',
+        }}
+      >
         <div>
-          <h3 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '600' }}>{t.title}</h3>
-          <p style={{ margin: 0, fontSize: '13px', color: 'var(--dsw-alias-label-caption, #888)' }}>{t.description}</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+            <span style={{ fontSize: '16px' }}>🔔</span>
+            <span style={{ fontSize: '15px', fontWeight: '600' }}>{t.title || '完成通知与音效'}</span>
+            {tip && (
+              <span
+                style={{
+                  padding: '2px 8px',
+                  borderRadius: '999px',
+                  backgroundColor: 'rgba(52, 199, 89, 0.15)',
+                  color: '#34c759',
+                  fontSize: '11px',
+                  fontWeight: '500',
+                  transition: 'opacity 0.2s',
+                }}
+              >
+                {tip}
+              </span>
+            )}
+          </div>
+          <div style={{ fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)', lineHeight: '1.4' }}>
+            {t.description || '在 AI 任务执行完成时，通过 macOS 系统通知横幅、原生应用图标、对话摘要与清脆提示音提醒你。'}
+          </div>
         </div>
+
         <button
           type="button"
           onClick={handleTest}
           disabled={testing || !settings.enabled}
           style={{
-            padding: '6px 14px',
-            borderRadius: '8px',
-            backgroundColor: settings.enabled ? 'var(--dsw-alias-state-business-primary, #007aff)' : '#ccc',
-            color: '#fff',
+            height: '32px',
+            padding: '0 14px',
+            borderRadius: '16px',
+            backgroundColor: settings.enabled
+              ? 'var(--dsw-alias-state-business-primary, #007aff)'
+              : 'var(--dsw-alias-border-l2, #ccc)',
+            color: '#ffffff',
             border: 'none',
-            fontSize: '13px',
+            fontSize: '12px',
             fontWeight: '500',
             cursor: settings.enabled ? 'pointer' : 'not-allowed',
-            transition: 'opacity 0.2s',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            flexShrink: 0,
+            transition: 'opacity 0.15s, transform 0.1s',
+            boxShadow: settings.enabled ? '0 1px 3px rgba(0, 122, 255, 0.25)' : 'none',
           }}
         >
-          {testing ? t.testing : t.testBtn}
+          {testing ? (t.testing || '测试中...') : (t.testBtn || '🔔 测试通知与声音')}
         </button>
       </div>
 
-      {tip && (
-        <div style={{
-          padding: '6px 12px',
-          marginBottom: '10px',
-          borderRadius: '6px',
-          backgroundColor: 'rgba(52, 199, 89, 0.15)',
-          color: '#34c759',
-          fontSize: '12px',
-          display: 'inline-block'
-        }}>
-          {tip}
+      {/* Row 1: 启用完成通知总开关 */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '13px 0',
+          borderBottom: '1px solid var(--dsw-alias-border-l1, rgba(128,128,128,0.1))',
+        }}
+      >
+        <div>
+          <div style={{ fontSize: '13.5px', fontWeight: '500' }}>{t.enabled || '启用完成通知'}</div>
+          <div style={{ fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)', marginTop: '2px' }}>
+            {t.enabledHint || '总开关：对话完成时进行通知提醒'}
+          </div>
         </div>
-      )}
-
-      {/* 1. 总开关 */}
-      <div style={rowStyle}>
-        <div style={labelBoxStyle}>
-          <span style={labelStyle}>{t.enabled}</span>
-          <span style={hintStyle}>{t.enabledHint}</span>
-        </div>
-        <input
-          type="checkbox"
-          style={switchStyle}
+        <Switch
           checked={!!settings.enabled}
-          onChange={e => updateSetting('enabled', e.target.checked)}
+          onChange={(val) => updateSetting('enabled', val)}
         />
       </div>
 
-      {/* 2. 系统通知横幅 */}
-      <div style={rowStyle}>
-        <div style={labelBoxStyle}>
-          <span style={labelStyle}>{t.banner}</span>
-          <span style={hintStyle}>{t.bannerHint}</span>
+      {/* Row 2: macOS 系统横幅 */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '13px 0',
+          borderBottom: '1px solid var(--dsw-alias-border-l1, rgba(128,128,128,0.1))',
+          opacity: settings.enabled ? 1 : 0.5,
+        }}
+      >
+        <div>
+          <div style={{ fontSize: '13.5px', fontWeight: '500' }}>{t.banner || 'macOS 系统通知横幅'}</div>
+          <div style={{ fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)', marginTop: '2px' }}>
+            {t.bannerHint || '通知中心弹出横幅提醒 (附带 DSH 原生图标、单轮耗时与对话精炼摘要)'}
+          </div>
         </div>
-        <input
-          type="checkbox"
-          style={switchStyle}
+        <Switch
           disabled={!settings.enabled}
           checked={!!settings.enableBanner}
-          onChange={e => updateSetting('enableBanner', e.target.checked)}
+          onChange={(val) => updateSetting('enableBanner', val)}
         />
       </div>
 
-      {/* 3. 提示音开关与声音选择 */}
-      <div style={rowStyle}>
-        <div style={labelBoxStyle}>
-          <span style={labelStyle}>{t.sound}</span>
-          <span style={hintStyle}>{t.soundHint}</span>
+      {/* Row 3: 完成提示音与音效选择 */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '13px 0',
+          borderBottom: '1px solid var(--dsw-alias-border-l1, rgba(128,128,128,0.1))',
+          opacity: settings.enabled ? 1 : 0.5,
+        }}
+      >
+        <div>
+          <div style={{ fontSize: '13.5px', fontWeight: '500' }}>{t.sound || '完成提示音'}</div>
+          <div style={{ fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)', marginTop: '2px' }}>
+            {t.soundHint || '任务结算时播放的系统高保真音效'}
+          </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <select
-            style={selectStyle}
             disabled={!settings.enabled || !settings.enableSound}
             value={settings.soundName || 'Glass'}
-            onChange={e => updateSetting('soundName', e.target.value)}
+            onChange={(e) => updateSetting('soundName', e.target.value)}
+            style={{
+              height: '28px',
+              padding: '0 10px',
+              borderRadius: '8px',
+              border: '1px solid var(--dsw-alias-border-l2, rgba(128,128,128,0.25))',
+              backgroundColor: 'var(--dsw-alias-bg-module-platform, rgba(128,128,128,0.08))',
+              color: 'inherit',
+              fontSize: '12px',
+              cursor: (!settings.enabled || !settings.enableSound) ? 'not-allowed' : 'pointer',
+              outline: 'none',
+            }}
           >
             {sounds.map(s => (
               <option key={s.id} value={s.id}>{s.name}</option>
             ))}
           </select>
-          <input
-            type="checkbox"
-            style={switchStyle}
+          <Switch
             disabled={!settings.enabled}
             checked={!!settings.enableSound}
-            onChange={e => updateSetting('enableSound', e.target.checked)}
+            onChange={(val) => updateSetting('enableSound', val)}
           />
         </div>
       </div>
 
-      {/* 4. 最小耗时阈值 */}
-      <div style={rowStyle}>
-        <div style={labelBoxStyle}>
-          <span style={labelStyle}>{t.minDuration}</span>
-          <span style={hintStyle}>{t.minDurationHint}</span>
+      {/* Row 4: 最小提醒耗时阈值 */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '13px 0',
+          borderBottom: '1px solid var(--dsw-alias-border-l1, rgba(128,128,128,0.1))',
+          opacity: settings.enabled ? 1 : 0.5,
+        }}
+      >
+        <div>
+          <div style={{ fontSize: '13.5px', fontWeight: '500' }}>{t.minDuration || '最小提醒耗时阈值 (秒)'}</div>
+          <div style={{ fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)', marginTop: '2px' }}>
+            {t.minDurationHint || '仅对单轮耗时超过该时长的任务提醒 (设为 0 秒提醒全部，避免日常短句快问快答频繁打扰)'}
+          </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <input
             type="number"
-            min="0"
-            max="300"
-            style={inputNumberStyle}
+            min={0}
+            max={300}
             disabled={!settings.enabled}
             value={settings.minDurationSec ?? 3}
-            onChange={e => updateSetting('minDurationSec', Math.max(0, parseInt(e.target.value, 10) || 0))}
+            onChange={(e) => updateSetting('minDurationSec', Math.max(0, parseInt(e.target.value, 10) || 0))}
+            style={{
+              width: '54px',
+              height: '28px',
+              padding: '0 6px',
+              borderRadius: '8px',
+              border: '1px solid var(--dsw-alias-border-l2, rgba(128,128,128,0.25))',
+              backgroundColor: 'var(--dsw-alias-bg-module-platform, rgba(128,128,128,0.08))',
+              color: 'inherit',
+              textAlign: 'center',
+              fontSize: '12px',
+              outline: 'none',
+            }}
           />
-          <span style={{ fontSize: '13px', color: 'var(--dsw-alias-label-caption, #888)' }}>秒</span>
+          <span style={{ fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)' }}>秒</span>
         </div>
-      </div>
-
-      {/* 5. 语音播报开关 */}
-      <div style={{ ...rowStyle, borderBottom: 'none' }}>
-        <div style={labelBoxStyle}>
-          <span style={labelStyle}>{t.speech}</span>
-          <span style={hintStyle}>{t.speechHint}</span>
-        </div>
-        <input
-          type="checkbox"
-          style={switchStyle}
-          disabled={!settings.enabled}
-          checked={!!settings.enableSpeech}
-          onChange={e => updateSetting('enableSpeech', e.target.checked)}
-        />
       </div>
     </div>
   );
