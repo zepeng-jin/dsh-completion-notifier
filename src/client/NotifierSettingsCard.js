@@ -1,63 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { zh, en } from './locales.js';
 
 /**
- * 纯矢量 SVG 图标集 (极简克制，随文本颜色自然变换，零彩色 Emoji)
- */
-function BellIcon({ size = 15, style = {} }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      style={{ verticalAlign: '-2px', flexShrink: 0, ...style }}
-    >
-      <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
-      <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
-    </svg>
-  );
-}
-
-function WandIcon({ size = 13, style = {} }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      style={{ verticalAlign: '-1px', flexShrink: 0, ...style }}
-    >
-      <path d="m15 4-2 4 4-2-4 2 2 4" />
-      <path d="M2 20h4l12-12-4-4L2 16v4Z" />
-    </svg>
-  );
-}
-
-function PlayIcon({ size = 11, style = {} }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      style={{ verticalAlign: '-1px', flexShrink: 0, ...style }}
-    >
-      <polygon points="6 4 20 12 6 20 6 4" />
-    </svg>
-  );
-}
-
-/**
- * 原生 macOS 风格 Toggle Switch 开关组件 (无生硬方框，纯平滑胶囊)
+ * 原生 macOS 风格 Toggle Switch 开关（克制雅致的 Apple 蓝，告别刺眼荧光青）
  */
 function Switch({ checked, onChange, disabled }) {
   return (
@@ -66,17 +10,17 @@ function Switch({ checked, onChange, disabled }) {
         if (!disabled && onChange) onChange(!checked);
       }}
       style={{
-        width: '40px',
+        width: '38px',
         height: '22px',
         borderRadius: '999px',
         backgroundColor: checked
-          ? 'var(--dsw-alias-state-business-primary, #007aff)'
-          : 'var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.25))',
+          ? '#0a84ff'
+          : 'var(--dsw-alias-border-l2, rgba(255, 255, 255, 0.14))',
         position: 'relative',
         cursor: disabled ? 'not-allowed' : 'pointer',
         transition: 'background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
         flexShrink: 0,
-        opacity: disabled ? 0.45 : 1,
+        opacity: disabled ? 0.4 : 1,
         userSelect: 'none',
       }}
     >
@@ -89,9 +33,9 @@ function Switch({ checked, onChange, disabled }) {
           position: 'absolute',
           top: '2px',
           left: '2px',
-          transform: checked ? 'translateX(18px)' : 'translateX(0)',
+          transform: checked ? 'translateX(16px)' : 'translateX(0)',
           transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.2)',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.25)',
         }}
       />
     </div>
@@ -147,9 +91,6 @@ export function sendNativeNotification(ctx, eventData) {
 }
 
 export function NotifierSettingsCard({ ctx }) {
-  const isZh = typeof document !== 'undefined' && (document.documentElement.lang || '').toLowerCase().startsWith('zh');
-  const t = isZh ? zh : en;
-
   const [settings, setSettings] = useState(null);
   const [sounds, setSounds] = useState([
     { id: 'Glass', name: 'Glass (玻璃清脆声 - 推荐)' },
@@ -161,7 +102,6 @@ export function NotifierSettingsCard({ ctx }) {
     { id: 'Funk', name: 'Funk (活力弹拨声)' },
   ]);
   const [testing, setTesting] = useState(false);
-  const [cleaning, setCleaning] = useState(false);
   const [tip, setTip] = useState('');
 
   useEffect(() => {
@@ -186,10 +126,10 @@ export function NotifierSettingsCard({ ctx }) {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ [key]: val }),
       });
-      setTip(t.saveSuccess || '配置已保存');
-      setTimeout(() => setTip(''), 2000);
+      setTip('已保存');
+      setTimeout(() => setTip(''), 1500);
     } catch {
-      setTip(t.error || '保存失败');
+      setTip('保存失败');
     }
   };
 
@@ -212,31 +152,12 @@ export function NotifierSettingsCard({ ctx }) {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(settings),
       });
-      setTip(t.testSuccess || '测试通知已发出！');
+      setTip('已发出测试');
     } catch {
-      setTip(t.error || '测试请求失败');
+      setTip('请求失败');
     } finally {
       setTesting(false);
-      setTimeout(() => setTip(''), 3000);
-    }
-  };
-
-  const handleCleanTitles = async () => {
-    if (cleaning) return;
-    setCleaning(true);
-    try {
-      const res = await fetch('/api/notifier/clean-titles', { method: 'POST' });
-      const data = await res.json();
-      if (data.ok) {
-        setTip(`已智能重命名 ${data.count} 个无脑会话！`);
-      } else {
-        setTip('暂无可智能重命名的会话');
-      }
-    } catch {
-      setTip('一键重命名请求失败');
-    } finally {
-      setCleaning(false);
-      setTimeout(() => setTip(''), 3500);
+      setTimeout(() => setTip(''), 2500);
     }
   };
 
@@ -245,115 +166,92 @@ export function NotifierSettingsCard({ ctx }) {
   return (
     <div
       style={{
-        padding: '8px 0 16px 0',
+        padding: '0 4px 24px 4px',
         fontFamily: 'inherit',
         color: 'var(--dsw-alias-label-primary, inherit)',
+        maxWidth: '720px',
       }}
     >
-      {/* 模块顶部标题与操作栏 */}
+      {/* 顶部标题栏：克制雅致、单行绝对不换行、去彩色大图与干扰徽标 */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           paddingBottom: '14px',
-          borderBottom: '1px solid var(--dsw-alias-border-l1, rgba(128,128,128,0.12))',
-          gap: '12px',
+          borderBottom: '1px solid var(--dsw-alias-border-l1, rgba(255, 255, 255, 0.08))',
+          gap: '16px',
         }}
       >
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-            <BellIcon size={16} />
-            <span style={{ fontSize: '15px', fontWeight: '600' }}>完成通知、审批提醒与智能标题</span>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '15px', fontWeight: '500', whiteSpace: 'nowrap' }}>
+              通知与标题
+            </span>
             {tip && (
               <span
                 style={{
-                  padding: '2px 8px',
-                  borderRadius: '999px',
-                  backgroundColor: 'rgba(52, 199, 89, 0.15)',
-                  color: '#34c759',
+                  padding: '1px 6px',
+                  borderRadius: '4px',
+                  backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                  color: 'var(--dsw-alias-label-secondary, #999)',
                   fontSize: '11px',
-                  fontWeight: '500',
-                  transition: 'opacity 0.2s',
                 }}
               >
                 {tip}
               </span>
             )}
           </div>
-          <div style={{ fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)', lineHeight: '1.4' }}>
-            在 AI 对话完成或等待权限审批、Plan 审核与决策时，通过 macOS 系统通知横幅、原生白鲸图标与提示音提醒你；首轮对话后自动提炼清晰中文标题。
+          <div
+            style={{
+              fontSize: '12.5px',
+              color: 'var(--dsw-alias-label-caption, #8a8f98)',
+              marginTop: '3px',
+              lineHeight: '1.4',
+            }}
+          >
+            管理 macOS 原生通知横幅、提示音效与会话智能命名。
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-          <button
-            type="button"
-            onClick={handleCleanTitles}
-            disabled={cleaning}
-            title="扫描侧边栏所有名字叫 task ready 或命令行开头的无脑会话，智能提炼为准确主题"
-            style={{
-              height: '32px',
-              padding: '0 12px',
-              borderRadius: '16px',
-              backgroundColor: 'var(--dsw-alias-bg-module-platform, rgba(128, 128, 128, 0.1))',
-              color: 'var(--dsw-alias-label-primary, inherit)',
-              border: '1px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.25))',
-              fontSize: '12px',
-              fontWeight: '500',
-              cursor: cleaning ? 'not-allowed' : 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              transition: 'all 0.15s',
-            }}
-          >
-            <WandIcon size={13} />
-            <span>{cleaning ? '正在提炼...' : '修复历史标题'}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleTest}
-            disabled={testing || !settings.enabled}
-            style={{
-              height: '32px',
-              padding: '0 14px',
-              borderRadius: '16px',
-              backgroundColor: settings.enabled
-                ? 'var(--dsw-alias-state-business-primary, #007aff)'
-                : 'var(--dsw-alias-border-l2, #ccc)',
-              color: '#ffffff',
-              border: 'none',
-              fontSize: '12px',
-              fontWeight: '500',
-              cursor: settings.enabled ? 'pointer' : 'not-allowed',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              transition: 'opacity 0.15s, transform 0.1s',
-              boxShadow: settings.enabled ? '0 1px 3px rgba(0, 122, 255, 0.25)' : 'none',
-            }}
-          >
-            <PlayIcon size={11} />
-            <span>{testing ? '测试中...' : '测试通知与声音'}</span>
-          </button>
-        </div>
+        {/* 沉稳低调的灰色微框测试按钮，彻底摒弃刺眼荧光青大色块 */}
+        <button
+          type="button"
+          onClick={handleTest}
+          disabled={testing || !settings.enabled}
+          style={{
+            height: '28px',
+            padding: '0 12px',
+            borderRadius: '6px',
+            backgroundColor: 'var(--dsw-alias-bg-module-platform, rgba(255, 255, 255, 0.06))',
+            color: 'var(--dsw-alias-label-primary, inherit)',
+            border: '1px solid var(--dsw-alias-border-l2, rgba(255, 255, 255, 0.12))',
+            fontSize: '12px',
+            fontWeight: '400',
+            cursor: settings.enabled ? 'pointer' : 'not-allowed',
+            opacity: settings.enabled ? 1 : 0.45,
+            whiteSpace: 'nowrap',
+            flexShrink: 0,
+            transition: 'background-color 0.15s',
+          }}
+        >
+          {testing ? '测试中...' : '测试通知与声音'}
+        </button>
       </div>
 
-      {/* Row 1: 启用完成通知总开关 */}
+      {/* Row 1: 启用完成通知 */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '13px 0',
-          borderBottom: '1px solid var(--dsw-alias-border-l1, rgba(128,128,128,0.1))',
+          padding: '12px 0',
+          borderBottom: '1px solid var(--dsw-alias-border-l1, rgba(255, 255, 255, 0.06))',
         }}
       >
         <div>
-          <div style={{ fontSize: '13.5px', fontWeight: '500' }}>启用完成通知</div>
-          <div style={{ fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)', marginTop: '2px' }}>
+          <div style={{ fontSize: '13.5px', fontWeight: '450' }}>启用完成通知</div>
+          <div style={{ fontSize: '12px', color: 'var(--dsw-alias-label-caption, #8a8f98)', marginTop: '2px' }}>
             总开关：对话完成时进行通知提醒
           </div>
         </div>
@@ -363,21 +261,21 @@ export function NotifierSettingsCard({ ctx }) {
         />
       </div>
 
-      {/* Row 2: macOS 系统横幅 */}
+      {/* Row 2: macOS 系统通知横幅 */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '13px 0',
-          borderBottom: '1px solid var(--dsw-alias-border-l1, rgba(128,128,128,0.1))',
-          opacity: settings.enabled ? 1 : 0.5,
+          padding: '12px 0',
+          borderBottom: '1px solid var(--dsw-alias-border-l1, rgba(255, 255, 255, 0.06))',
+          opacity: settings.enabled ? 1 : 0.45,
         }}
       >
         <div>
-          <div style={{ fontSize: '13.5px', fontWeight: '500' }}>macOS 系统通知横幅</div>
-          <div style={{ fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)', marginTop: '2px' }}>
-            通知中心弹出横幅提醒 (附带 DSH 官方白鲸图标、单轮耗时与对话精炼摘要，点击跳转对应会话)
+          <div style={{ fontSize: '13.5px', fontWeight: '450' }}>macOS 系统通知横幅</div>
+          <div style={{ fontSize: '12px', color: 'var(--dsw-alias-label-caption, #8a8f98)', marginTop: '2px' }}>
+            通知中心弹出横幅提醒（附带 DSH 官方白鲸图标与对话摘要，点击直达会话）
           </div>
         </div>
         <Switch
@@ -387,20 +285,20 @@ export function NotifierSettingsCard({ ctx }) {
         />
       </div>
 
-      {/* Row 3: 完成提示音与音效选择 */}
+      {/* Row 3: 完成提示音 */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '13px 0',
-          borderBottom: '1px solid var(--dsw-alias-border-l1, rgba(128,128,128,0.1))',
-          opacity: settings.enabled ? 1 : 0.5,
+          padding: '12px 0',
+          borderBottom: '1px solid var(--dsw-alias-border-l1, rgba(255, 255, 255, 0.06))',
+          opacity: settings.enabled ? 1 : 0.45,
         }}
       >
         <div>
-          <div style={{ fontSize: '13.5px', fontWeight: '500' }}>完成提示音</div>
-          <div style={{ fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)', marginTop: '2px' }}>
+          <div style={{ fontSize: '13.5px', fontWeight: '450' }}>完成提示音</div>
+          <div style={{ fontSize: '12px', color: 'var(--dsw-alias-label-caption, #8a8f98)', marginTop: '2px' }}>
             任务结算时播放的系统高保真音效
           </div>
         </div>
@@ -410,11 +308,11 @@ export function NotifierSettingsCard({ ctx }) {
             value={settings.soundName || 'Glass'}
             onChange={(e) => updateSetting('soundName', e.target.value)}
             style={{
-              height: '28px',
-              padding: '0 10px',
-              borderRadius: '8px',
-              border: '1px solid var(--dsw-alias-border-l2, rgba(128,128,128,0.25))',
-              backgroundColor: 'var(--dsw-alias-bg-module-platform, rgba(128,128,128,0.08))',
+              height: '26px',
+              padding: '0 8px',
+              borderRadius: '6px',
+              border: '1px solid var(--dsw-alias-border-l2, rgba(255, 255, 255, 0.12))',
+              backgroundColor: 'var(--dsw-alias-bg-module-platform, rgba(255, 255, 255, 0.05))',
               color: 'inherit',
               fontSize: '12px',
               cursor: (!settings.enabled || !settings.enableSound) ? 'not-allowed' : 'pointer',
@@ -433,43 +331,45 @@ export function NotifierSettingsCard({ ctx }) {
         </div>
       </div>
 
-      {/* Row 4: 等待权限审批 (允许) 与 Plan 审核提醒 */}
+      {/* Row 4: 等待权限审批与 Plan 提交通知 */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '13px 0',
-          borderBottom: '1px solid var(--dsw-alias-border-l1, rgba(128,128,128,0.1))',
+          padding: '12px 0',
+          borderBottom: '1px solid var(--dsw-alias-border-l1, rgba(255, 255, 255, 0.06))',
+          opacity: settings.enabled ? 1 : 0.45,
         }}
       >
         <div>
-          <div style={{ fontSize: '13.5px', fontWeight: '500' }}>等待权限审批与 Plan 提交通知</div>
-          <div style={{ fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)', marginTop: '2px' }}>
-            当 AI 等待权限授权（允许按钮）、Plan 计划审核或选择题时，发出系统通知与音效提醒，点击可直接进入会话决策
+          <div style={{ fontSize: '13.5px', fontWeight: '450' }}>等待权限审批与 Plan 提交通知</div>
+          <div style={{ fontSize: '12px', color: 'var(--dsw-alias-label-caption, #8a8f98)', marginTop: '2px' }}>
+            当 AI 等待权限授权（允许按钮）、Plan 计划审核或选择题时，发出横幅与音效提醒
           </div>
         </div>
         <Switch
+          disabled={!settings.enabled}
           checked={settings.notifyOnApproval !== false}
           onChange={(val) => updateSetting('notifyOnApproval', val)}
         />
       </div>
 
-      {/* Row 5: 最小提醒耗时阈值 */}
+      {/* Row 5: 最小提醒耗时阈值 (彻底移除幽灵开关，保留干净的微调输入框) */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '13px 0',
-          borderBottom: '1px solid var(--dsw-alias-border-l1, rgba(128,128,128,0.1))',
-          opacity: settings.enabled ? 1 : 0.5,
+          padding: '12px 0',
+          borderBottom: '1px solid var(--dsw-alias-border-l1, rgba(255, 255, 255, 0.06))',
+          opacity: settings.enabled ? 1 : 0.45,
         }}
       >
         <div>
-          <div style={{ fontSize: '13.5px', fontWeight: '500' }}>最小提醒耗时阈值 (秒)</div>
-          <div style={{ fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)', marginTop: '2px' }}>
-            仅对单轮耗时超过该时长的任务提醒 (设为 0 秒提醒全部，避免日常短句快问快答频繁打扰)
+          <div style={{ fontSize: '13.5px', fontWeight: '450' }}>最小提醒耗时阈值</div>
+          <div style={{ fontSize: '12px', color: 'var(--dsw-alias-label-caption, #8a8f98)', marginTop: '2px' }}>
+            仅对单轮耗时超过该时长的任务提醒（设为 0 秒提醒全部，避免日常短句打扰）
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -481,35 +381,35 @@ export function NotifierSettingsCard({ ctx }) {
             value={settings.minDurationSec ?? 3}
             onChange={(e) => updateSetting('minDurationSec', Math.max(0, parseInt(e.target.value, 10) || 0))}
             style={{
-              width: '54px',
-              height: '28px',
-              padding: '0 6px',
-              borderRadius: '8px',
-              border: '1px solid var(--dsw-alias-border-l2, rgba(128,128,128,0.25))',
-              backgroundColor: 'var(--dsw-alias-bg-module-platform, rgba(128,128,128,0.08))',
+              width: '48px',
+              height: '26px',
+              padding: '0 4px',
+              borderRadius: '6px',
+              border: '1px solid var(--dsw-alias-border-l2, rgba(255, 255, 255, 0.12))',
+              backgroundColor: 'var(--dsw-alias-bg-module-platform, rgba(255, 255, 255, 0.05))',
               color: 'inherit',
               textAlign: 'center',
               fontSize: '12px',
               outline: 'none',
             }}
           />
-          <span style={{ fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)' }}>秒</span>
+          <span style={{ fontSize: '12px', color: 'var(--dsw-alias-label-caption, #8a8f98)' }}>秒</span>
         </div>
       </div>
 
-      {/* Row 6: 自动智能提炼会话标题 */}
+      {/* Row 6: 首轮对话智能提炼标题 */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '13px 0',
+          padding: '12px 0',
         }}
       >
         <div>
-          <div style={{ fontSize: '13.5px', fontWeight: '500' }}>首轮对话智能提炼标题</div>
-          <div style={{ fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)', marginTop: '2px' }}>
-            首轮对话完成后，根据实际意图自动生成 6~10 字清晰中文标题（彻底解决 task ready 机械命名）
+          <div style={{ fontSize: '13.5px', fontWeight: '450' }}>首轮对话智能提炼标题</div>
+          <div style={{ fontSize: '12px', color: 'var(--dsw-alias-label-caption, #8a8f98)', marginTop: '2px' }}>
+            首轮对话完成后，根据实际意图自动生成清晰中文标题（彻底替换 task ready）
           </div>
         </div>
         <Switch
