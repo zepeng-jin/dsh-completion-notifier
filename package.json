@@ -43,5 +43,13 @@
   },
   "peerDependencies": {
     "react": "^18.2.0 || ^19.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zepeng-jin/dsh-completion-notifier.git"
+  },
+  "homepage": "https://github.com/zepeng-jin/dsh-completion-notifier#readme",
+  "bugs": {
+    "url": "https://github.com/zepeng-jin/dsh-completion-notifier/issues"
   }
 }

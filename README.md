@@ -92,21 +92,29 @@ dsh-completion-notifier/
 
 ### 方式一：本地链接开发（最推荐）
 
-1. **软链接至 DSH Web Profile 的模块目录**：
+#### 对于 DSH Desktop 客户端（macOS 桌面版）：
+1. **软链接至 DSH Desktop 真实的 Profile 目录**：
    ```bash
-   ln -s "/Volumes/824g硬盘/vibe-coding/dsh-completion-notifier" ~/.dsh/profiles/web/node_modules/dsh-completion-notifier
+   ln -s "/Volumes/824g硬盘/vibe-coding/dsh-completion-notifier" "$HOME/Library/Application Support/dsh-desktop/harness/profiles/web/node_modules/dsh-completion-notifier"
    ```
 
-2. **在 DSH 补丁配置中注册插件**：
-   编辑 `~/.dsh/profiles/web/cordis.patch.yml`，在数组末尾加入：
+2. **在 DSH Desktop 补丁配置中注册插件**：
+   编辑 `$HOME/Library/Application Support/dsh-desktop/harness/profiles/web/cordis.patch.yml`，在数组末尾加入：
    ```yaml
    - insert:
        - id: dsh-completion-notifier
          name: 'dsh-completion-notifier'
    ```
 
-3. **重启 DSH Desktop**：
-   重启应用后，进入 **设置 (Settings)** 页面，即可看到全新的 **「通知」** 配置卡片！点击 **「🔔 测试通知与声音」** 可立即验证。
+#### 对于 DSH CLI 独立版（命令行版）：
+1. **软链接至 CLI Profile 目录**：
+   ```bash
+   ln -s "/Volumes/824g硬盘/vibe-coding/dsh-completion-notifier" ~/.dsh/profiles/web/node_modules/dsh-completion-notifier
+   ```
+2. 在 `~/.dsh/profiles/web/cordis.patch.yml` 中同样追加上述 `- insert` 条目。
+
+3. **生效方式**：
+   DSH 内置热重载服务；配置保存后，直接刷新当前 Web GUI 页面（Cmd + R）或重启应用，进入 **设置 (Settings)** 页面即可看到全新的 **「通知」** 配置卡片！点击 **「🔔 测试通知与声音」** 可立即验证。
 
 ---
 
