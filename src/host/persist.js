@@ -12,6 +12,7 @@ export const DEFAULT_SETTINGS = {
   speechText: '任务已完成',
   minDurationSec: 3, // 默认仅提醒耗时超过 3 秒的任务
   notifyOnError: true,
+  autoTitle: true, // 自动智能提炼首轮会话标题 (彻底告别无脑的 task ready)
 };
 
 export const AVAILABLE_SOUNDS = [

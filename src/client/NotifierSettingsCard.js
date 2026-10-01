@@ -106,6 +106,7 @@ export function NotifierSettingsCard({ ctx }) {
     { id: 'Funk', name: 'Funk (活力弹拨声)' },
   ]);
   const [testing, setTesting] = useState(false);
+  const [cleaning, setCleaning] = useState(false);
   const [tip, setTip] = useState('');
 
   // 加载设置
@@ -168,6 +169,25 @@ export function NotifierSettingsCard({ ctx }) {
     }
   };
 
+  const handleCleanTitles = async () => {
+    if (cleaning) return;
+    setCleaning(true);
+    try {
+      const res = await fetch('/api/notifier/clean-titles', { method: 'POST' });
+      const data = await res.json();
+      if (data.ok) {
+        setTip(`已智能重命名 ${data.count} 个无脑会话！`);
+      } else {
+        setTip('暂无可智能重命名的会话');
+      }
+    } catch {
+      setTip('一键重命名请求失败');
+    } finally {
+      setCleaning(false);
+      setTimeout(() => setTip(''), 3500);
+    }
+  };
+
   if (!settings) return null;
 
   return (
@@ -178,7 +198,7 @@ export function NotifierSettingsCard({ ctx }) {
         color: 'var(--dsw-alias-label-primary, inherit)',
       }}
     >
-      {/* 模块顶部标题与测试操作栏 */}
+      {/* 模块顶部标题与操作栏 */}
       <div
         style={{
           display: 'flex',
@@ -192,7 +212,7 @@ export function NotifierSettingsCard({ ctx }) {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
             <span style={{ fontSize: '16px' }}>🔔</span>
-            <span style={{ fontSize: '15px', fontWeight: '600' }}>{t.title || '完成通知与音效'}</span>
+            <span style={{ fontSize: '15px', fontWeight: '600' }}>{t.title || '完成通知与智能标题'}</span>
             {tip && (
               <span
                 style={{
@@ -210,36 +230,61 @@ export function NotifierSettingsCard({ ctx }) {
             )}
           </div>
           <div style={{ fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)', lineHeight: '1.4' }}>
-            {t.description || '在 AI 任务执行完成时，通过 macOS 系统通知横幅、原生白鲸图标、对话摘要与清脆提示音提醒你，点击横幅可直接跳转会话。'}
+            在 AI 任务执行完成时，通过 macOS 系统通知横幅、原生白鲸图标、对话摘要与清脆提示音提醒你；并在首轮对话后自动提炼清晰中文标题。
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={handleTest}
-          disabled={testing || !settings.enabled}
-          style={{
-            height: '32px',
-            padding: '0 14px',
-            borderRadius: '16px',
-            backgroundColor: settings.enabled
-              ? 'var(--dsw-alias-state-business-primary, #007aff)'
-              : 'var(--dsw-alias-border-l2, #ccc)',
-            color: '#ffffff',
-            border: 'none',
-            fontSize: '12px',
-            fontWeight: '500',
-            cursor: settings.enabled ? 'pointer' : 'not-allowed',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            flexShrink: 0,
-            transition: 'opacity 0.15s, transform 0.1s',
-            boxShadow: settings.enabled ? '0 1px 3px rgba(0, 122, 255, 0.25)' : 'none',
-          }}
-        >
-          {testing ? (t.testing || '测试中...') : (t.testBtn || '🔔 测试通知与声音')}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+          <button
+            type="button"
+            onClick={handleCleanTitles}
+            disabled={cleaning}
+            title="扫描侧边栏所有名字叫 task ready 或命令行开头的无脑会话，智能提炼为准确主题"
+            style={{
+              height: '32px',
+              padding: '0 12px',
+              borderRadius: '16px',
+              backgroundColor: 'var(--dsw-alias-bg-module-platform, rgba(128, 128, 128, 0.1))',
+              color: 'var(--dsw-alias-label-primary, inherit)',
+              border: '1px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.25))',
+              fontSize: '12px',
+              fontWeight: '500',
+              cursor: cleaning ? 'not-allowed' : 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              transition: 'all 0.15s',
+            }}
+          >
+            {cleaning ? '正在提炼...' : '✨ 修复历史标题'}
+          </button>
+
+          <button
+            type="button"
+            onClick={handleTest}
+            disabled={testing || !settings.enabled}
+            style={{
+              height: '32px',
+              padding: '0 14px',
+              borderRadius: '16px',
+              backgroundColor: settings.enabled
+                ? 'var(--dsw-alias-state-business-primary, #007aff)'
+                : 'var(--dsw-alias-border-l2, #ccc)',
+              color: '#ffffff',
+              border: 'none',
+              fontSize: '12px',
+              fontWeight: '500',
+              cursor: settings.enabled ? 'pointer' : 'not-allowed',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'opacity 0.15s, transform 0.1s',
+              boxShadow: settings.enabled ? '0 1px 3px rgba(0, 122, 255, 0.25)' : 'none',
+            }}
+          >
+            {testing ? (t.testing || '测试中...') : (t.testBtn || '🔔 测试通知与声音')}
+          </button>
+        </div>
       </div>
 
       {/* Row 1: 启用完成通知总开关 */}
@@ -374,6 +419,27 @@ export function NotifierSettingsCard({ ctx }) {
           />
           <span style={{ fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)' }}>秒</span>
         </div>
+      </div>
+
+      {/* Row 5: 自动智能提炼会话标题 */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '13px 0',
+        }}
+      >
+        <div>
+          <div style={{ fontSize: '13.5px', fontWeight: '500' }}>首轮对话智能提炼标题</div>
+          <div style={{ fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)', marginTop: '2px' }}>
+            首轮对话完成后，根据实际意图自动生成 6~10 字清晰中文标题（彻底解决 task ready 机械命名）
+          </div>
+        </div>
+        <Switch
+          checked={settings.autoTitle !== false}
+          onChange={(val) => updateSetting('autoTitle', val)}
+        />
       </div>
     </div>
   );

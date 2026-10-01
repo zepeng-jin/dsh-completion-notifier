@@ -126,5 +126,27 @@ export function makeNotifierRoutes(service, triggerReload) {
         }
       },
     },
+    {
+      kind: 'exact',
+      path: '/api/notifier/clean-titles',
+      handler: async (req, res) => {
+        if (req.method !== 'POST') {
+          res.writeHead(405);
+          res.end();
+          return;
+        }
+        try {
+          const renamed = typeof service.cleanDumbTitles === 'function' ? service.cleanDumbTitles() : [];
+          return json(res, 200, {
+            ok: true,
+            count: renamed.length,
+            message: `已成功扫描并智能重命名 ${renamed.length} 个历史无脑标题会话`,
+            renamed,
+          });
+        } catch (err) {
+          return json(res, 500, { ok: false, error: err.message });
+        }
+      },
+    },
   ];
 }

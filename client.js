@@ -4,6 +4,8 @@
  * 1. Native macOS Notification via Web Notification API (100% DSH Whale Icon, zero Script Editor)
  * 2. Click notification to focus window & jump to session (no Finder popup)
  * 3. Modern macOS-style Toggle Switches in Settings UI (no ugly square checkboxes)
+ * 4. Smart Session Titler: automatically summarizes clean titles after 1st turn, replacing dumb 'task ready'
+ * 5. One-click batch fix for historic 'task ready' session titles
  */
 
 if (typeof window !== 'undefined' && window.__ModuleLoader__) {
@@ -61,7 +63,6 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
       function sendNativeNotification(ctx, eventData) {
         if (typeof window === 'undefined' || typeof window.Notification === 'undefined') return;
 
-        // 确保有权限
         if (window.Notification.permission === 'default') {
           try {
             window.Notification.requestPermission();
@@ -97,9 +98,7 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
               // 2. 降级：DOM 智能选择侧边栏会话项
               const selector = `[data-session-id="${sessionId}"], [data-id="${sessionId}"], a[href*="${sessionId}"]`;
               const target = document.querySelector(selector);
-              if (target) {
-                target.click();
-              }
+              if (target) target.click();
             } catch (clickErr) {
               console.warn('[dsh-completion-notifier] click navigate error:', clickErr);
             }
@@ -122,6 +121,7 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
           { id: 'Funk', name: 'Funk (活力弹拨声)' },
         ]);
         const [testing, setTesting] = React.useState(false);
+        const [cleaning, setCleaning] = React.useState(false);
         const [tip, setTip] = React.useState('');
 
         React.useEffect(() => {
@@ -157,7 +157,6 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
           if (!settings || testing) return;
           setTesting(true);
 
-          // 1. 前端直接触发带原生白鲸图标的通知，杜绝脚本编辑器与访达弹窗
           if (settings.enableBanner) {
             sendNativeNotification(ctx, {
               title: 'DSH 任务完成',
@@ -167,7 +166,6 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
             });
           }
 
-          // 2. 通知后端播放选定音效
           try {
             await fetch('/api/notifier/test', {
               method: 'POST',
@@ -180,6 +178,25 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
           } finally {
             setTesting(false);
             setTimeout(() => setTip(''), 3000);
+          }
+        };
+
+        const handleCleanTitles = async () => {
+          if (cleaning) return;
+          setCleaning(true);
+          try {
+            const res = await fetch('/api/notifier/clean-titles', { method: 'POST' });
+            const data = await res.json();
+            if (data.ok) {
+              setTip(`已智能重命名 ${data.count} 个无脑会话！`);
+            } else {
+              setTip('暂无可智能重命名的会话');
+            }
+          } catch {
+            setTip('一键重命名请求失败');
+          } finally {
+            setCleaning(false);
+            setTimeout(() => setTip(''), 3500);
           }
         };
 
@@ -213,7 +230,7 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
                 React.createElement('span', {
                   key: 'h3',
                   style: { fontSize: '15px', fontWeight: '600' }
-                }, '完成通知与音效'),
+                }, '完成通知与智能标题'),
                 tip && React.createElement('span', {
                   key: 'tip',
                   style: {
@@ -229,33 +246,59 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
               React.createElement('div', {
                 key: 'p',
                 style: { fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)', lineHeight: '1.4' }
-              }, '在 AI 任务执行完成时，通过 macOS 系统通知横幅、原生白鲸图标、对话摘要与清脆提示音提醒你，点击横幅可直接跳转会话。')
+              }, '在 AI 任务执行完成时，通过 macOS 系统通知横幅、原生白鲸图标、对话摘要与提示音提醒你；并在首轮对话后自动提炼清晰中文标题。')
             ]),
-            React.createElement('button', {
-              key: 'btn',
-              type: 'button',
-              onClick: handleTest,
-              disabled: testing || !settings.enabled,
-              style: {
-                height: '32px',
-                padding: '0 14px',
-                borderRadius: '16px',
-                backgroundColor: settings.enabled
-                  ? 'var(--dsw-alias-state-business-primary, #007aff)'
-                  : 'var(--dsw-alias-border-l2, #ccc)',
-                color: '#ffffff',
-                border: 'none',
-                fontSize: '12px',
-                fontWeight: '500',
-                cursor: settings.enabled ? 'pointer' : 'not-allowed',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                flexShrink: 0,
-                transition: 'opacity 0.15s, transform 0.1s',
-                boxShadow: settings.enabled ? '0 1px 3px rgba(0, 122, 255, 0.25)' : 'none',
-              }
-            }, testing ? '测试中...' : '🔔 测试通知与声音')
+            React.createElement('div', {
+              key: 'btn-group',
+              style: { display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }
+            }, [
+              React.createElement('button', {
+                key: 'btn-clean',
+                type: 'button',
+                onClick: handleCleanTitles,
+                disabled: cleaning,
+                title: '扫描侧边栏所有名字叫 task ready 或命令行开头的无脑会话，智能提炼为准确主题',
+                style: {
+                  height: '32px',
+                  padding: '0 12px',
+                  borderRadius: '16px',
+                  backgroundColor: 'var(--dsw-alias-bg-module-platform, rgba(128, 128, 128, 0.1))',
+                  color: 'var(--dsw-alias-label-primary, inherit)',
+                  border: '1px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.25))',
+                  fontSize: '12px',
+                  fontWeight: '500',
+                  cursor: cleaning ? 'not-allowed' : 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  transition: 'all 0.15s',
+                }
+              }, cleaning ? '正在提炼...' : '✨ 修复历史标题'),
+              React.createElement('button', {
+                key: 'btn-test',
+                type: 'button',
+                onClick: handleTest,
+                disabled: testing || !settings.enabled,
+                style: {
+                  height: '32px',
+                  padding: '0 14px',
+                  borderRadius: '16px',
+                  backgroundColor: settings.enabled
+                    ? 'var(--dsw-alias-state-business-primary, #007aff)'
+                    : 'var(--dsw-alias-border-l2, #ccc)',
+                  color: '#ffffff',
+                  border: 'none',
+                  fontSize: '12px',
+                  fontWeight: '500',
+                  cursor: settings.enabled ? 'pointer' : 'not-allowed',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  transition: 'opacity 0.15s, transform 0.1s',
+                  boxShadow: settings.enabled ? '0 1px 3px rgba(0, 122, 255, 0.25)' : 'none',
+                }
+              }, testing ? '测试中...' : '🔔 测试通知与声音')
+            ])
           ]),
 
           // Row 1: 启用完成通知总开关
@@ -387,6 +430,27 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
               }),
               React.createElement('span', { key: 'unit', style: { fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)' } }, '秒')
             ])
+          ]),
+
+          // Row 5: 自动智能提炼会话标题
+          React.createElement('div', {
+            key: 'row-autotitle',
+            style: {
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '13px 0'
+            }
+          }, [
+            React.createElement('div', { key: 'l5' }, [
+              React.createElement('div', { style: { fontSize: '13.5px', fontWeight: '500' } }, '首轮对话智能提炼标题'),
+              React.createElement('div', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)', marginTop: '2px' } }, '首轮对话完成后，根据实际意图自动生成 6~10 字清晰中文标题（彻底解决 task ready 机械命名）')
+            ]),
+            React.createElement(Switch, {
+              key: 'sw5',
+              checked: settings.autoTitle !== false,
+              onChange: (val) => updateSetting('autoTitle', val)
+            })
           ])
         ]);
       }
