@@ -1,8 +1,8 @@
 /**
  * dsh-completion-notifier client bundle
  * Features:
- * 1. Native macOS Notification via Web Notification API (DSH Whale Icon)
- * 2. Click notification to focus window & jump to session
+ * 1. Native macOS Notification via Web Notification API (100% DSH Whale Icon, zero Script Editor)
+ * 2. Click notification to focus window & jump to session (no Finder popup)
  * 3. Modern macOS-style Toggle Switches in Settings UI (no ugly square checkboxes)
  */
 
@@ -55,7 +55,62 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
         }));
       }
 
-      function NotifierSettingsCard() {
+      /**
+       * 在当前窗口弹出具备 DSH 原生白鲸图标的 macOS 系统横幅，并绑定点击跳转
+       */
+      function sendNativeNotification(ctx, eventData) {
+        if (typeof window === 'undefined' || typeof window.Notification === 'undefined') return;
+
+        // 确保有权限
+        if (window.Notification.permission === 'default') {
+          try {
+            window.Notification.requestPermission();
+          } catch (_) {}
+        }
+
+        const title = eventData.title || 'DSH 任务完成';
+        const body = eventData.subtitle
+          ? `${eventData.subtitle} · ${eventData.summary || '对话已完成'}`
+          : (eventData.summary || '对话已完成');
+
+        try {
+          const notification = new window.Notification(title, {
+            body,
+            tag: eventData.sessionId || 'dsh-notify',
+            renotify: true,
+          });
+
+          // 点击通知事件：唤醒置顶 DSH 窗口，并跳转到对应会话框
+          notification.onclick = () => {
+            try {
+              window.focus();
+
+              const sessionId = eventData.sessionId;
+              if (!sessionId || sessionId === 'current') return;
+
+              // 1. 优先调用 uiWorkspace 服务跳转
+              if (ctx && ctx.uiWorkspace && typeof ctx.uiWorkspace.openSession === 'function') {
+                ctx.uiWorkspace.openSession(sessionId);
+                return;
+              }
+
+              // 2. 降级：DOM 智能选择侧边栏会话项
+              const selector = `[data-session-id="${sessionId}"], [data-id="${sessionId}"], a[href*="${sessionId}"]`;
+              const target = document.querySelector(selector);
+              if (target) {
+                target.click();
+              }
+            } catch (clickErr) {
+              console.warn('[dsh-completion-notifier] click navigate error:', clickErr);
+            }
+          };
+        } catch (err) {
+          console.warn('[dsh-completion-notifier] show notification error:', err);
+        }
+      }
+
+      function NotifierSettingsCard(props) {
+        const { ctx } = props;
         const [settings, setSettings] = React.useState(null);
         const [sounds, setSounds] = React.useState([
           { id: 'Glass', name: 'Glass (玻璃清脆声 - 推荐)' },
@@ -101,6 +156,18 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
         const handleTest = async () => {
           if (!settings || testing) return;
           setTesting(true);
+
+          // 1. 前端直接触发带原生白鲸图标的通知，杜绝脚本编辑器与访达弹窗
+          if (settings.enableBanner) {
+            sendNativeNotification(ctx, {
+              title: 'DSH 任务完成',
+              subtitle: '⚡️ 耗时 3.5s (测试)',
+              summary: '已为你完成代码分析与重构，点击本横幅可直接跳转回此会话。',
+              sessionId: 'current',
+            });
+          }
+
+          // 2. 通知后端播放选定音效
           try {
             await fetch('/api/notifier/test', {
               method: 'POST',
@@ -162,7 +229,7 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
               React.createElement('div', {
                 key: 'p',
                 style: { fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)', lineHeight: '1.4' }
-              }, '在 AI 任务执行完成时，通过 macOS 系统通知横幅、原生应用图标、对话摘要与清脆提示音提醒你，点击横幅可直接跳转会话。')
+              }, '在 AI 任务执行完成时，通过 macOS 系统通知横幅、原生白鲸图标、对话摘要与清脆提示音提醒你，点击横幅可直接跳转会话。')
             ]),
             React.createElement('button', {
               key: 'btn',
@@ -227,7 +294,7 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
           }, [
             React.createElement('div', { key: 'l2' }, [
               React.createElement('div', { style: { fontSize: '13.5px', fontWeight: '500' } }, 'macOS 系统通知横幅'),
-              React.createElement('div', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)', marginTop: '2px' } }, '通知中心弹出横幅提醒 (附带 DSH 原生图标、单轮耗时与对话摘要，点击跳转会话)')
+              React.createElement('div', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)', marginTop: '2px' } }, '通知中心弹出横幅提醒 (附带 DSH 官方白鲸图标、单轮耗时与对话精炼摘要，点击跳转对应会话)')
             ]),
             React.createElement(Switch, {
               key: 'sw2',
@@ -325,7 +392,7 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
       }
 
       /**
-       * 监听系统通知事件并由前端弹出带原生图标与跳转能力的 Notification
+       * 监听系统通知事件并由前端弹出带原生白鲸图标与跳转能力的 Notification
        */
       function setupNotificationListener(ctx) {
         if (typeof window === 'undefined') return;
@@ -345,14 +412,14 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
             if (!e.data) return;
             try {
               const eventData = JSON.parse(e.data);
-              showClientNotification(ctx, eventData);
+              sendNativeNotification(ctx, eventData);
             } catch (err) {
               console.warn('[dsh-completion-notifier] parse event error:', err);
             }
           };
 
           eventSource.onerror = () => {
-            // 自动重连机制
+            // 保持重连
           };
 
           ctx.effect(() => () => {
@@ -363,51 +430,8 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
         }
       }
 
-      function showClientNotification(ctx, eventData) {
-        if (typeof window === 'undefined' || typeof window.Notification === 'undefined') return;
-
-        const title = eventData.title || 'DSH 任务完成';
-        const body = eventData.subtitle
-          ? `${eventData.subtitle} · ${eventData.summary || '对话已完成'}`
-          : (eventData.summary || '对话已完成');
-
-        try {
-          const notification = new window.Notification(title, {
-            body,
-            tag: eventData.sessionId || 'dsh-notify',
-            renotify: true,
-          });
-
-          // 点击通知事件：聚焦并跳转会话
-          notification.onclick = () => {
-            try {
-              window.focus();
-
-              const sessionId = eventData.sessionId;
-              if (!sessionId || sessionId === 'current') return;
-
-              // 1. 通过 uiWorkspace 服务切换会话
-              if (ctx.uiWorkspace && typeof ctx.uiWorkspace.openSession === 'function') {
-                ctx.uiWorkspace.openSession(sessionId);
-                return;
-              }
-
-              // 2. DOM 降级选择器
-              const sessionEl = document.querySelector(`[data-session-id="${sessionId}"], [data-id="${sessionId}"]`);
-              if (sessionEl) {
-                sessionEl.click();
-              }
-            } catch (clickErr) {
-              console.warn('[dsh-completion-notifier] click navigate error:', clickErr);
-            }
-          };
-        } catch (err) {
-          console.warn('[dsh-completion-notifier] show notification error:', err);
-        }
-      }
-
       function apply(ctx) {
-        // 启动后台事件监听，负责原生通知分发与会话跳转
+        // 启动后台事件监听，负责原生白鲸通知分发与会话跳转
         setupNotificationListener(ctx);
 
         // 注册到 DSH 设置通用分区 (settings.general.item)
@@ -417,7 +441,7 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
               name: 'settings.general.item',
               id: 'dsh-completion-notifier-settings',
               order: 250,
-            }, NotifierSettingsCard)
+            }, () => React.createElement(NotifierSettingsCard, { ctx }))
           );
 
           // 同时注册到插件中心卡片插槽 (web-ui.plugin.item) 确保兼容
@@ -426,7 +450,7 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
               name: 'web-ui.plugin.item',
               id: 'dsh-completion-notifier-plugin-card',
               order: 150,
-            }, NotifierSettingsCard)
+            }, () => React.createElement(NotifierSettingsCard, { ctx }))
           );
         }
       }

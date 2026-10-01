@@ -1,5 +1,5 @@
 import { loadSettings, saveSettings } from './persist.js';
-import { triggerNotification, playSound, showBanner, speakText } from './notifier.js';
+import { playSound, speakText } from './notifier.js';
 
 /**
  * 将模型原始回复文本清理为适合通知展示的精炼对话摘要
@@ -65,30 +65,23 @@ export class NotifierService {
       playSound(s.soundName || 'Glass');
     }
 
+    if (s.enableSpeech && s.speechText) {
+      speakText(s.speechText);
+    }
+
     if (s.enableBanner) {
-      const sampleSummary = '已为你完成代码分析与重构，并成功通过所有测试用例。';
+      const sampleSummary = '已为你完成代码分析与重构，点击本横幅可直接跳转回此会话。';
       const eventData = {
         type: 'test',
-        title: 'DSH 通知测试',
+        title: 'DSH 任务完成',
         subtitle: '⚡️ 耗时 3.5s (测试)',
         summary: sampleSummary,
         sessionId: 'current',
       };
 
-      // 优先通过 SSE 发送给前端渲染进程弹出（具备 DSH 原生图标与点击跳转）
-      let clientCount = 0;
       if (typeof this.broadcastToClients === 'function') {
-        clientCount = this.broadcastToClients(eventData);
+        this.broadcastToClients(eventData);
       }
-
-      // 若无前端连接，走 osascript 兜底
-      if (clientCount === 0) {
-        showBanner('DSH 通知测试', sampleSummary, '⚡️ 耗时 3.5s (测试)', s.soundName);
-      }
-    }
-
-    if (s.enableSpeech && s.speechText) {
-      speakText(s.speechText);
     }
   }
 
@@ -138,6 +131,10 @@ export class NotifierService {
             playSound(this.settings.soundName || 'Glass');
           }
 
+          if (this.settings.enableSpeech && this.settings.speechText) {
+            speakText(this.settings.speechText);
+          }
+
           if (this.settings.enableBanner) {
             const eventData = {
               type: 'completed',
@@ -148,23 +145,14 @@ export class NotifierService {
               durationSec,
             };
 
-            let clientCount = 0;
             if (typeof this.broadcastToClients === 'function') {
-              clientCount = this.broadcastToClients(eventData);
-            }
-
-            if (clientCount === 0) {
-              triggerNotification('completed', { durationSec, summary }, this.settings);
+              this.broadcastToClients(eventData);
             }
           }
-
-          if (this.settings.enableSpeech && this.settings.speechText) {
-            speakText(this.settings.speechText);
-          }
-        } else if (reason === 'error') {
-          if (this.settings.notifyOnError) {
-            playSound('Basso');
-            const errMsg = event.data?.reason?.error?.message || '任务或工具调用遇到异常';
+        } else if (reason === 'error' && this.settings.notifyOnError) {
+          playSound('Basso');
+          const errMsg = event.data?.reason?.error?.message || '任务或工具调用遇到异常';
+          if (this.settings.enableBanner) {
             const eventData = {
               type: 'error',
               title: 'DSH 执行异常',
@@ -174,13 +162,8 @@ export class NotifierService {
               durationSec,
             };
 
-            let clientCount = 0;
             if (typeof this.broadcastToClients === 'function') {
-              clientCount = this.broadcastToClients(eventData);
-            }
-
-            if (clientCount === 0) {
-              triggerNotification('error', { durationSec, summary: errMsg }, this.settings);
+              this.broadcastToClients(eventData);
             }
           }
         }

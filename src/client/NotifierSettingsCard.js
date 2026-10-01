@@ -43,7 +43,55 @@ function Switch({ checked, onChange, disabled }) {
   );
 }
 
-export function NotifierSettingsCard() {
+/**
+ * 弹出 DSH 原生白鲸图标系统横幅
+ */
+export function sendNativeNotification(ctx, eventData) {
+  if (typeof window === 'undefined' || typeof window.Notification === 'undefined') return;
+
+  if (window.Notification.permission === 'default') {
+    try {
+      window.Notification.requestPermission();
+    } catch (_) {}
+  }
+
+  const title = eventData.title || 'DSH 任务完成';
+  const body = eventData.subtitle
+    ? `${eventData.subtitle} · ${eventData.summary || '对话已完成'}`
+    : (eventData.summary || '对话已完成');
+
+  try {
+    const notification = new window.Notification(title, {
+      body,
+      tag: eventData.sessionId || 'dsh-notify',
+      renotify: true,
+    });
+
+    notification.onclick = () => {
+      try {
+        window.focus();
+
+        const sessionId = eventData.sessionId;
+        if (!sessionId || sessionId === 'current') return;
+
+        if (ctx && ctx.uiWorkspace && typeof ctx.uiWorkspace.openSession === 'function') {
+          ctx.uiWorkspace.openSession(sessionId);
+          return;
+        }
+
+        const selector = `[data-session-id="${sessionId}"], [data-id="${sessionId}"], a[href*="${sessionId}"]`;
+        const target = document.querySelector(selector);
+        if (target) target.click();
+      } catch (clickErr) {
+        console.warn('[dsh-completion-notifier] click navigate error:', clickErr);
+      }
+    };
+  } catch (err) {
+    console.warn('[dsh-completion-notifier] show notification error:', err);
+  }
+}
+
+export function NotifierSettingsCard({ ctx }) {
   const isZh = typeof document !== 'undefined' && (document.documentElement.lang || '').toLowerCase().startsWith('zh');
   const t = isZh ? zh : en;
 
@@ -93,6 +141,18 @@ export function NotifierSettingsCard() {
   const handleTest = async () => {
     if (!settings || testing) return;
     setTesting(true);
+
+    // 1. 前端直接触发带 DSH 原生白鲸图标的通知，杜绝脚本编辑器与访达弹窗
+    if (settings.enableBanner) {
+      sendNativeNotification(ctx, {
+        title: 'DSH 任务完成',
+        subtitle: '⚡️ 耗时 3.5s (测试)',
+        summary: '已为你完成代码分析与重构，点击本横幅可直接跳转回此会话。',
+        sessionId: 'current',
+      });
+    }
+
+    // 2. 触发后端音效
     try {
       await fetch('/api/notifier/test', {
         method: 'POST',
@@ -150,7 +210,7 @@ export function NotifierSettingsCard() {
             )}
           </div>
           <div style={{ fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)', lineHeight: '1.4' }}>
-            {t.description || '在 AI 任务执行完成时，通过 macOS 系统通知横幅、原生应用图标、对话摘要与清脆提示音提醒你。'}
+            {t.description || '在 AI 任务执行完成时，通过 macOS 系统通知横幅、原生白鲸图标、对话摘要与清脆提示音提醒你，点击横幅可直接跳转会话。'}
           </div>
         </div>
 
@@ -218,7 +278,7 @@ export function NotifierSettingsCard() {
         <div>
           <div style={{ fontSize: '13.5px', fontWeight: '500' }}>{t.banner || 'macOS 系统通知横幅'}</div>
           <div style={{ fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)', marginTop: '2px' }}>
-            {t.bannerHint || '通知中心弹出横幅提醒 (附带 DSH 原生图标、单轮耗时与对话精炼摘要)'}
+            {t.bannerHint || '通知中心弹出横幅提醒 (附带 DSH 官方白鲸图标、单轮耗时与对话精炼摘要，点击跳转对应会话)'}
           </div>
         </div>
         <Switch
