@@ -108,6 +108,7 @@ export class NotifierService {
     this.turnStartTimes = new Map();
     this.lastAssistantTexts = new Map();
     this.lastUserTexts = new Map();
+    this.notifiedTurns = new Map();
     this.broadcastToClients = null;
     this.sessionDisposer = null;
     this.disposed = false;
@@ -222,7 +223,7 @@ export class NotifierService {
       if (this.disposed) return;
       const sessionId = String(session.id || 'default');
 
-            // 🌟 核心拦截：一旦任何底层组件或模型将标题写为 task ready 或路径，立刻阻断并强制修正！
+      // 🌟 核心拦截：一旦任何底层组件或模型将标题写为 task ready 或路径，立刻阻断并强制修正！
       if (event.type === 'session/title' && this.settings.autoTitle) {
         const title = event.data?.title;
         const sourceKind = event.data?.source?.kind;
@@ -253,21 +254,76 @@ export class NotifierService {
         }
       }
 
-      // 3. 实时收集本轮 Assistant 文本
+      // 3. 实时收集本轮 Assistant 文本，并在文本输出完毕时【立即触发通知，零秒延迟】
       if (event.type === 'assistant/message') {
+        const turn = event.data?.turn;
         const content = event.data?.message?.content || [];
         const textPieces = [];
+        const toolCalls = [];
+
         for (const block of content) {
           if (block.type === 'text' && typeof block.text === 'string') {
             textPieces.push(block.text);
+          } else if (block.type === 'tool-call') {
+            toolCalls.push(block);
           }
         }
+
         if (textPieces.length > 0) {
           this.lastAssistantTexts.set(sessionId, textPieces.join('\n'));
         }
+
+        // 🌟 核心突破：如果本回复没有 tool-call，说明模型已完整打字输出完毕！
+        // 立即触发声音、浮窗与系统通知！绝对不等底层 workspace-changes 漫长 30 秒的 git 超时！
+        if (toolCalls.length === 0 && textPieces.length > 0 && turn !== undefined) {
+          const startTime = this.turnStartTimes.get(sessionId) || Date.now();
+          const durationSec = Math.round(((Date.now() - startTime) / 1000) * 10) / 10;
+          const summary = cleanSummary(textPieces.join('\n'));
+
+          this.notifiedTurns.set(sessionId, turn);
+
+          // 自动重命名会话
+          if (this.settings.autoTitle) {
+            try {
+              const events = session.snapshotEvents ? session.snapshotEvents() : [];
+              const titleEvent = events.findLast(e => e.type === 'session/title');
+              const currentTitle = titleEvent?.data?.title || '';
+              if (isDumbTitle(currentTitle)) {
+                const userPrompt = this.lastUserTexts.get(sessionId) || '';
+                this.smartRenameSession(session, userPrompt, summary);
+              }
+            } catch (_) {}
+          }
+
+          // 阈值过滤通知
+          if (durationSec >= (this.settings.minDurationSec || 0)) {
+            if (this.settings.enableSound) {
+              playSound(this.settings.soundName || 'Glass');
+            }
+
+            if (this.settings.enableSpeech && this.settings.speechText) {
+              speakText(this.settings.speechText);
+            }
+
+            if (this.settings.enableBanner) {
+              const eventData = {
+                type: 'completed',
+                title: 'DSH 任务完成',
+                subtitle: `耗时 ${durationSec}s`,
+                summary,
+                sessionId,
+                durationSec,
+              };
+
+              if (typeof this.broadcastToClients === 'function') {
+                this.broadcastToClients(eventData);
+              }
+            }
+          }
+        }
       }
 
-      // 4. 🌟 核心监听：权限审批等待（User Approval / 允许按钮）
+      // 4. 权限审批等待（User Approval / 允许按钮）
       if (event.type === 'approval/asked' && this.settings.notifyOnApproval) {
         playSound('Ping');
         const toolName = event.data?.toolName || '工具调用';
@@ -284,11 +340,10 @@ export class NotifierService {
         }
       }
 
-      // 5. 🌟 核心监听：工具调用中的人类交互 (Plan 模式审核 & 用户提问选择题)
+      // 5. 工具调用中的人类交互 (Plan 模式审核 & 用户提问选择题)
       if (event.type === 'tool/call' && this.settings.notifyOnApproval) {
         const toolName = event.data?.name;
         if (toolName === 'exit_plan_mode') {
-          // Plan 计划待审批
           playSound('Hero');
           const planText = event.data?.arguments?.plan || '';
           const planTitle = (planText.split('\n')[0] || '').replace(/^#+\s*/, '').trim() || '执行方案已制定';
@@ -303,7 +358,6 @@ export class NotifierService {
             this.broadcastToClients(eventData);
           }
         } else if (toolName === 'ask_user_question') {
-          // 用户问题提问 / 选择题
           playSound('Ping');
           const questions = event.data?.arguments?.questions || [];
           const firstQ = questions[0]?.question || 'AI 遇到了需要你确认的技术决策';
@@ -320,8 +374,9 @@ export class NotifierService {
         }
       }
 
-      // 6. 轮次结算 (对话完成)
+      // 6. 轮次结算 (转圈结束/后置兜底)
       if (event.type === 'turn/end') {
+        const turn = event.data?.turn;
         const startTime = this.turnStartTimes.get(sessionId) || Date.now();
         const durationSec = Math.round(((Date.now() - startTime) / 1000) * 10) / 10;
         this.turnStartTimes.delete(sessionId);
@@ -333,7 +388,13 @@ export class NotifierService {
         const reason = event.data?.reason?.kind;
 
         if (reason === 'completed') {
-          // 智能总结会话标题
+          // 如果在 assistant/message 阶段已经即时提醒过了，直接跳过，避免重复通知！
+          if (turn !== undefined && this.notifiedTurns.get(sessionId) === turn) {
+            this.notifiedTurns.delete(sessionId);
+            return;
+          }
+
+          // 智能总结会话标题兜底
           if (this.settings.autoTitle) {
             try {
               const events = session.snapshotEvents ? session.snapshotEvents() : [];
@@ -405,5 +466,6 @@ export class NotifierService {
     this.turnStartTimes.clear();
     this.lastAssistantTexts.clear();
     this.lastUserTexts.clear();
+    this.notifiedTurns.clear();
   }
 }
