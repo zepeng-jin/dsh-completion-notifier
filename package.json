@@ -7,13 +7,17 @@
   "exports": {
     ".": "./index.js",
     "./client": "./client.js",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./icon.svg": "./icon.svg",
+    "./locale/*.json": "./locale/*.json"
   },
   "files": [
     "index.js",
     "client.js",
     "cordis.patch.yml",
-    "src"
+    "src",
+    "icon.svg",
+    "locale"
   ],
   "keywords": [
     "deepseek",
@@ -52,5 +56,6 @@
   "homepage": "https://github.com/zepeng-jin/dsh-completion-notifier#readme",
   "bugs": {
     "url": "https://github.com/zepeng-jin/dsh-completion-notifier/issues"
-  }
+  },
+  "icon": "icon.svg"
 }

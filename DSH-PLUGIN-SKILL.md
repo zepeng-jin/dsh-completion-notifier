@@ -66,12 +66,23 @@ my-dsh-plugin/
   "name": "my-dsh-plugin",
   "version": "1.0.0",
   "type": "module",
+  "icon": "icon.svg",
   "main": "./index.js",
   "exports": {
     ".": "./index.js",
     "./client": "./client.js",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./icon.svg": "./icon.svg",
+    "./locale/*.json": "./locale/*.json"
   },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "src",
+    "icon.svg",
+    "locale"
+  ],
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
@@ -86,6 +97,20 @@ my-dsh-plugin/
   }
 }
 ```
+
+### 专属图标与多语言卡片定义
+在 DSH 的「内置插件」列表中，如果插件没有提供专属图标，会退化为默认的四格拼图占位符。若要拥有类似 `dsh-context`、`dsh-dream-skin` 或 `OpenViking 记忆` 的精美独立图标和中文标题：
+1. **专属图标 (`icon.svg`)**：在根目录下创建 `icon.svg`（SVG 格式，64x64 或 1024x1024，小于 256 KiB）；
+2. **多语言描述 (`locale/zh.json`)**：
+   ```json
+   {
+     "meta": {
+       "title": "插件中文展示名 (my-dsh-plugin)",
+       "description": "一行精炼克制的中文功能描述。"
+     }
+   }
+   ```
+DSH 宿主微内核会在启动时自动将 `icon.svg` 转换为 base64 内联展示，并在插件列表中高亮呈现专属视觉标识！
 
 ### 补丁配置文件 (`cordis.patch.yml`)
 ```yaml
