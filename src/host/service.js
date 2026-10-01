@@ -9,53 +9,68 @@ export function isDumbTitle(title) {
   const lower = title.toLowerCase().trim();
   return (
     lower.startsWith('task ready') ||
+    lower.includes('task ready') ||
     lower.startsWith('untitled') ||
     lower.startsWith('新会话') ||
+    lower.startsWith('/') ||
+    lower.startsWith('~') ||
+    lower.startsWith('./') ||
+    lower.startsWith('../') ||
+    lower.startsWith('[系统背景') ||
+    lower.startsWith('[system') ||
     lower.startsWith('cd ') ||
     lower.startsWith('pnpm ') ||
     lower.startsWith('npm ') ||
     lower.startsWith('git ') ||
     lower.startsWith('ls ') ||
+    lower.startsWith('cat ') ||
+    lower.startsWith('node ') ||
+    lower.startsWith('python ') ||
     lower === 'hello' ||
     lower === 'hi' ||
     lower === 'test'
   );
 }
 
-/**
- * 从用户提问与 AI 回复中智能提炼 6~12 字精炼中文会话标题
- */
 export function extractSmartTitle(userPrompt, assistantSummary) {
   let cleanUser = (userPrompt || '')
     .replace(/<think>[\s\S]*?<\/think>/gi, '')
     .replace(/^task ready.*$/gim, '')
-    .replace(/^[#\s\-\*`]+/gm, '')
     .trim();
 
-  // 如果用户提问有实质内容，优先提炼用户提问的核心意图
+  // 若用户提问包含路径（如 /Users/.../modern-web-guidance-plugin 是什么）
+  const pathMatch = /([A-Za-z0-9_.-]+(?:plugin|sdk|api|tool|cli|[A-Za-z0-9_-]+))[\s\S]*?(是什么|怎么用|如何|干嘛|做什么)/i.exec(cleanUser);
+  if (pathMatch) {
+    const pkgName = pathMatch[1].replace(/\.js$|\.ts$/i, '');
+    return `${pkgName} 介绍`;
+  }
+
+  // 剥离长路径前缀，只保留提问核心
+  cleanUser = cleanUser.replace(/\/[A-Za-z0-9_.-]+\//g, '').replace(/^[#\s\-\*`]+/gm, '').trim();
+
   if (cleanUser && cleanUser.length > 2) {
     cleanUser = cleanUser
-      .replace(/^(请问|帮我|如何|怎么|为什么|能不能|可以|我想|请解释|请实现|请编写)/g, '')
+      .replace(/^(请问|帮我|如何|怎么|为什么|能不能|可以|我想|请解释|请实现|请编写|介绍一下)/g, '')
       .replace(/[？?\!！。，,]+$/g, '')
       .trim();
 
     if (cleanUser.length > 1) {
-      if (cleanUser.length > 12) {
-        return cleanUser.slice(0, 11) + '…';
+      if (cleanUser.length > 14) {
+        return cleanUser.slice(0, 13) + '…';
       }
       return cleanUser;
     }
   }
 
-  // 若用户提问是空话/模板命令，结合 AI 回复摘要提炼
+  // 若用户提问全被过滤，结合 AI 答复提炼
   let cleanAssistant = (assistantSummary || '')
     .replace(/^(已为你|我已经|好的|没问题|通过|这是)/g, '')
     .replace(/[。，！!？?]+$/g, '')
     .trim();
 
   if (cleanAssistant && cleanAssistant.length > 2) {
-    if (cleanAssistant.length > 12) {
-      return cleanAssistant.slice(0, 11) + '…';
+    if (cleanAssistant.length > 14) {
+      return cleanAssistant.slice(0, 13) + '…';
     }
     return cleanAssistant;
   }
@@ -206,6 +221,17 @@ export class NotifierService {
     this.sessionDisposer = this.ctx.on('session/event', (session, event) => {
       if (this.disposed) return;
       const sessionId = String(session.id || 'default');
+
+            // 🌟 核心拦截：一旦任何底层组件或模型将标题写为 task ready 或路径，立刻阻断并强制修正！
+      if (event.type === 'session/title' && this.settings.autoTitle) {
+        const title = event.data?.title;
+        const sourceKind = event.data?.source?.kind;
+        if (sourceKind !== 'user' && isDumbTitle(title)) {
+          const userPrompt = this.lastUserTexts.get(sessionId) || '';
+          const asstText = this.lastAssistantTexts.get(sessionId) || '';
+          this.smartRenameSession(session, userPrompt, cleanSummary(asstText));
+        }
+      }
 
       // 1. 记录开始时间与重置缓存
       if (event.type === 'turn/start') {
