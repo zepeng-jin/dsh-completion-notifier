@@ -1,5 +1,5 @@
 import { loadSettings, saveSettings } from './persist.js';
-import { playSound, speakText } from './notifier.js';
+import { playSound, speakText, showSystemBannerFallback } from './notifier.js';
 
 /**
  * 判断标题是否为无脑的默认标题或机械指令
@@ -132,6 +132,23 @@ export class NotifierService {
     return this.getSettings();
   }
 
+  /**
+   * 统一派发通知事件（优先推给客户端智能分流，无客户端时由 Host 兜底）
+   */
+  dispatchNotification(eventData) {
+    let clientCount = 0;
+    if (typeof this.broadcastToClients === 'function') {
+      try {
+        clientCount = this.broadcastToClients(eventData);
+      } catch (_) {}
+    }
+    if (clientCount === 0 && this.settings.enableBanner !== false) {
+      try {
+        showSystemBannerFallback(eventData.title, eventData.summary, eventData.subtitle);
+      } catch (_) {}
+    }
+  }
+
   async testNotify(customSettings) {
     const s = { ...this.settings, ...(customSettings || {}) };
 
@@ -153,9 +170,7 @@ export class NotifierService {
         sessionId: 'current',
       };
 
-      if (typeof this.broadcastToClients === 'function') {
-        this.broadcastToClients(eventData);
-      }
+      this.dispatchNotification(eventData);
     }
   }
 
@@ -315,9 +330,7 @@ export class NotifierService {
                 durationSec,
               };
 
-              if (typeof this.broadcastToClients === 'function') {
-                this.broadcastToClients(eventData);
-              }
+              this.dispatchNotification(eventData);
             }
           }
         }
@@ -335,9 +348,7 @@ export class NotifierService {
           summary: `AI 正在请求执行「${toolName}」，${reason}`,
           sessionId,
         };
-        if (typeof this.broadcastToClients === 'function') {
-          this.broadcastToClients(eventData);
-        }
+        this.dispatchNotification(eventData);
       }
 
       // 5. 工具调用中的人类交互 (Plan 模式审核 & 用户提问选择题)
@@ -354,9 +365,7 @@ export class NotifierService {
             summary: `AI 已提交计划「${planTitle}」，等待你确认批准以继续推进任务`,
             sessionId,
           };
-          if (typeof this.broadcastToClients === 'function') {
-            this.broadcastToClients(eventData);
-          }
+          this.dispatchNotification(eventData);
         } else if (toolName === 'ask_user_question') {
           playSound('Ping');
           const questions = event.data?.arguments?.questions || [];
@@ -368,9 +377,7 @@ export class NotifierService {
             summary: cleanSummary(firstQ),
             sessionId,
           };
-          if (typeof this.broadcastToClients === 'function') {
-            this.broadcastToClients(eventData);
-          }
+          this.dispatchNotification(eventData);
         }
       }
 
@@ -431,9 +438,7 @@ export class NotifierService {
               durationSec,
             };
 
-            if (typeof this.broadcastToClients === 'function') {
-              this.broadcastToClients(eventData);
-            }
+            this.dispatchNotification(eventData);
           }
         } else if (reason === 'error' && this.settings.notifyOnError) {
           playSound('Basso');
@@ -448,9 +453,7 @@ export class NotifierService {
               durationSec,
             };
 
-            if (typeof this.broadcastToClients === 'function') {
-              this.broadcastToClients(eventData);
-            }
+            this.dispatchNotification(eventData);
           }
         }
       }

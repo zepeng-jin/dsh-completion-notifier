@@ -24,3 +24,18 @@ export function speakText(text) {
     if (err) console.warn('[dsh-completion-notifier] say error:', err.message);
   });
 }
+
+/**
+ * 仅在浏览器前端断连或无客户端时的 Host 兜底通知
+ */
+export function showSystemBannerFallback(title, message, subtitle = '') {
+  if (process.platform !== 'darwin') return;
+  const safeTitle = (title || 'DSH 任务完成').replace(/[\\"]/g, '\\$&').replace(/[\r\n]+/g, ' ');
+  const safeMessage = (message || '对话已完成').replace(/[\\"]/g, '\\$&').replace(/[\r\n]+/g, ' ');
+  const safeSubtitle = (subtitle || '').replace(/[\\"]/g, '\\$&').replace(/[\r\n]+/g, ' ');
+
+  const subPart = safeSubtitle ? `subtitle "${safeSubtitle}"` : '';
+  const script = `display notification "${safeMessage}" with title "${safeTitle}" ${subPart}`;
+
+  execFile('osascript', ['-e', script], () => {});
+}
