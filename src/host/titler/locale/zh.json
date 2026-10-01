@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "会话首轮智能命名 (notifier-smart-titler)",
+    "description": "首轮对话完成后根据用户实际意图自动提炼 6~10 字清晰中文主题，彻底消除机械的 task ready。"
+  }
+}

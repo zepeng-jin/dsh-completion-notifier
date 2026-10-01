@@ -10,7 +10,10 @@
     "./package.json": "./package.json",
     "./icon.svg": "./icon.svg",
     "./locale/*.json": "./locale/*.json",
-    "./titler": "./src/host/titler.js"
+    "./titler": "./src/host/titler.js",
+    "./titler/package.json": "./src/host/titler/package.json",
+    "./titler/locale/*.json": "./src/host/titler/locale/*.json",
+    "./titler/icon.svg": "./src/host/titler/icon.svg"
   },
   "files": [
     "index.js",
