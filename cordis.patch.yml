@@ -1,4 +1,11 @@
 # DSH bundle patch for dsh-completion-notifier
+# 将插件能力模块化拆分为独立组件，支持在 DSH 插件管理中按需独立开启或停用
+
 - insert:
+    # 核心组件 1: 任务完成与审批提醒通知
     - id: dsh-completion-notifier
       name: 'dsh-completion-notifier'
+
+    # 核心组件 2: 会话首轮智能标题提炼
+    - id: notifier-smart-titler
+      name: 'dsh-completion-notifier/titler'

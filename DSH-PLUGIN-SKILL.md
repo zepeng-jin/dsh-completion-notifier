@@ -112,12 +112,32 @@ my-dsh-plugin/
    ```
 DSH 宿主微内核会在启动时自动将 `icon.svg` 转换为 base64 内联展示，并在插件列表中高亮呈现专属视觉标识！
 
-### 补丁配置文件 (`cordis.patch.yml`)
+### 补丁配置文件 (`cordis.patch.yml`) 与多组件拆分
+如果你的插件包含多项相对独立的功能（例如：一方面负责「系统完成通知与审批」，另一方面负责「首轮会话智能标题」），**绝对不要把所有代码硬塞在单一主入口中**！
+DSH 的插件管理器原生支持**多组件模块化展示**：`cordis.patch.yml` 中的每一个 `- insert` 条目都会在「包含的组件」列表中渲染为一行独立的子组件卡片，并配有独立的【运行中 / 已停用】Switch 开关！
+
 ```yaml
 - insert:
+    # 核心组件 1: 任务完成与审批提醒通知
     - id: my-dsh-plugin
       name: 'my-dsh-plugin'
+
+    # 核心组件 2: 会话首轮智能标题提炼
+    - id: my-dsh-smart-titler
+      name: 'my-dsh-plugin/titler'
 ```
+
+配合在 `package.json` 的 `exports` 中暴露子路径：
+```json
+"exports": {
+  ".": "./index.js",
+  "./titler": "./src/host/titler.js",
+  "./client": "./client.js",
+  "./package.json": "./package.json"
+}
+```
+在 DSH 客户端打开该插件详情页时，就会清晰整齐地展示：
+`包含的组件 共 2 个 · 2 运行中`，用户可以自由针对特定功能进行独立开关！
 
 ---
 

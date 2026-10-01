@@ -9,7 +9,8 @@
     "./client": "./client.js",
     "./package.json": "./package.json",
     "./icon.svg": "./icon.svg",
-    "./locale/*.json": "./locale/*.json"
+    "./locale/*.json": "./locale/*.json",
+    "./titler": "./src/host/titler.js"
   },
   "files": [
     "index.js",
