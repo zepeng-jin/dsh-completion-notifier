@@ -24,7 +24,7 @@ function readBody(req) {
   });
 }
 
-export function makeNotifierRoutes(service) {
+export function makeNotifierRoutes(service, triggerReload) {
   const sseClients = new Set();
 
   // 提供给 service 广播事件到所有前端连接
@@ -101,6 +101,26 @@ export function makeNotifierRoutes(service) {
           const body = await readBody(req);
           await service.testNotify(body);
           return json(res, 200, { ok: true, message: 'Test notification triggered' });
+        } catch (err) {
+          return json(res, 500, { ok: false, error: err.message });
+        }
+      },
+    },
+    {
+      kind: 'exact',
+      path: '/api/notifier/reload',
+      handler: async (req, res) => {
+        if (req.method !== 'POST') {
+          res.writeHead(405);
+          res.end();
+          return;
+        }
+        try {
+          if (typeof triggerReload === 'function') {
+            const outcome = await triggerReload();
+            return json(res, 200, { ok: true, message: 'Plugin hot-reloaded successfully', outcome });
+          }
+          return json(res, 200, { ok: true, message: 'Reload not supported in this runtime' });
         } catch (err) {
           return json(res, 500, { ok: false, error: err.message });
         }

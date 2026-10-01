@@ -39,11 +39,14 @@ export class NotifierService {
     this.turnStartTimes = new Map();
     this.lastAssistantTexts = new Map();
     this.broadcastToClients = null;
+    this.sessionDisposer = null;
+    this.disposed = false;
     this.init();
   }
 
   async init() {
     const loaded = await loadSettings();
+    if (this.disposed) return;
     this.settings = { ...loaded, ...this.settings };
     this.bindSessionEvents();
   }
@@ -86,7 +89,14 @@ export class NotifierService {
   }
 
   bindSessionEvents() {
-    this.ctx.on('session/event', (session, event) => {
+    if (this.disposed) return;
+    if (typeof this.sessionDisposer === 'function') {
+      this.sessionDisposer();
+      this.sessionDisposer = null;
+    }
+
+    this.sessionDisposer = this.ctx.on('session/event', (session, event) => {
+      if (this.disposed) return;
       const sessionId = String(session.id || 'default');
 
       // 1. 记录开始时间与重置缓存
@@ -169,5 +179,15 @@ export class NotifierService {
         }
       }
     });
+  }
+
+  dispose() {
+    this.disposed = true;
+    if (typeof this.sessionDisposer === 'function') {
+      this.sessionDisposer();
+      this.sessionDisposer = null;
+    }
+    this.turnStartTimes.clear();
+    this.lastAssistantTexts.clear();
   }
 }
