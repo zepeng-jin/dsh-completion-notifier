@@ -2,7 +2,62 @@ import React, { useState, useEffect } from 'react';
 import { zh, en } from './locales.js';
 
 /**
- * 原生 macOS 风格 Toggle Switch 开关组件（告别生硬方框复选框）
+ * 纯矢量 SVG 图标集 (极简克制，随文本颜色自然变换，零彩色 Emoji)
+ */
+function BellIcon({ size = 15, style = {} }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ verticalAlign: '-2px', flexShrink: 0, ...style }}
+    >
+      <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+      <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+    </svg>
+  );
+}
+
+function WandIcon({ size = 13, style = {} }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ verticalAlign: '-1px', flexShrink: 0, ...style }}
+    >
+      <path d="m15 4-2 4 4-2-4 2 2 4" />
+      <path d="M2 20h4l12-12-4-4L2 16v4Z" />
+    </svg>
+  );
+}
+
+function PlayIcon({ size = 11, style = {} }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      style={{ verticalAlign: '-1px', flexShrink: 0, ...style }}
+    >
+      <polygon points="6 4 20 12 6 20 6 4" />
+    </svg>
+  );
+}
+
+/**
+ * 原生 macOS 风格 Toggle Switch 开关组件 (无生硬方框，纯平滑胶囊)
  */
 function Switch({ checked, onChange, disabled }) {
   return (
@@ -109,7 +164,6 @@ export function NotifierSettingsCard({ ctx }) {
   const [cleaning, setCleaning] = useState(false);
   const [tip, setTip] = useState('');
 
-  // 加载设置
   useEffect(() => {
     fetch('/api/notifier/settings')
       .then(res => res.json())
@@ -146,7 +200,7 @@ export function NotifierSettingsCard({ ctx }) {
     if (settings.enableBanner) {
       sendNativeNotification(ctx, {
         title: 'DSH 任务完成',
-        subtitle: '⚡️ 耗时 3.5s (测试)',
+        subtitle: '耗时 3.5s (测试)',
         summary: '已为你完成代码分析与重构，点击本横幅可直接跳转回此会话。',
         sessionId: 'current',
       });
@@ -209,8 +263,8 @@ export function NotifierSettingsCard({ ctx }) {
       >
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-            <span style={{ fontSize: '16px' }}>🔔</span>
-            <span style={{ fontSize: '15px', fontWeight: '600' }}>{t.title || '完成通知、审批提醒与智能标题'}</span>
+            <BellIcon size={16} />
+            <span style={{ fontSize: '15px', fontWeight: '600' }}>完成通知、审批提醒与智能标题</span>
             {tip && (
               <span
                 style={{
@@ -250,11 +304,12 @@ export function NotifierSettingsCard({ ctx }) {
               cursor: cleaning ? 'not-allowed' : 'pointer',
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '4px',
+              gap: '6px',
               transition: 'all 0.15s',
             }}
           >
-            {cleaning ? '正在提炼...' : '✨ 修复历史标题'}
+            <WandIcon size={13} />
+            <span>{cleaning ? '正在提炼...' : '修复历史标题'}</span>
           </button>
 
           <button
@@ -280,7 +335,8 @@ export function NotifierSettingsCard({ ctx }) {
               boxShadow: settings.enabled ? '0 1px 3px rgba(0, 122, 255, 0.25)' : 'none',
             }}
           >
-            {testing ? (t.testing || '测试中...') : (t.testBtn || '🔔 测试通知与声音')}
+            <PlayIcon size={11} />
+            <span>{testing ? '测试中...' : '测试通知与声音'}</span>
           </button>
         </div>
       </div>
@@ -296,9 +352,9 @@ export function NotifierSettingsCard({ ctx }) {
         }}
       >
         <div>
-          <div style={{ fontSize: '13.5px', fontWeight: '500' }}>{t.enabled || '启用完成通知'}</div>
+          <div style={{ fontSize: '13.5px', fontWeight: '500' }}>启用完成通知</div>
           <div style={{ fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)', marginTop: '2px' }}>
-            {t.enabledHint || '总开关：对话完成时进行通知提醒'}
+            总开关：对话完成时进行通知提醒
           </div>
         </div>
         <Switch
@@ -319,9 +375,9 @@ export function NotifierSettingsCard({ ctx }) {
         }}
       >
         <div>
-          <div style={{ fontSize: '13.5px', fontWeight: '500' }}>{t.banner || 'macOS 系统通知横幅'}</div>
+          <div style={{ fontSize: '13.5px', fontWeight: '500' }}>macOS 系统通知横幅</div>
           <div style={{ fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)', marginTop: '2px' }}>
-            {t.bannerHint || '通知中心弹出横幅提醒 (附带 DSH 官方白鲸图标、单轮耗时与对话精炼摘要，点击跳转对应会话)'}
+            通知中心弹出横幅提醒 (附带 DSH 官方白鲸图标、单轮耗时与对话精炼摘要，点击跳转对应会话)
           </div>
         </div>
         <Switch
@@ -343,9 +399,9 @@ export function NotifierSettingsCard({ ctx }) {
         }}
       >
         <div>
-          <div style={{ fontSize: '13.5px', fontWeight: '500' }}>{t.sound || '完成提示音'}</div>
+          <div style={{ fontSize: '13.5px', fontWeight: '500' }}>完成提示音</div>
           <div style={{ fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)', marginTop: '2px' }}>
-            {t.soundHint || '任务结算时播放的系统高保真音效'}
+            任务结算时播放的系统高保真音效
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -377,7 +433,7 @@ export function NotifierSettingsCard({ ctx }) {
         </div>
       </div>
 
-      {/* Row 4: 🌟 等待权限审批 (允许) 与 Plan 审核提醒 */}
+      {/* Row 4: 等待权限审批 (允许) 与 Plan 审核提醒 */}
       <div
         style={{
           display: 'flex',
@@ -411,9 +467,9 @@ export function NotifierSettingsCard({ ctx }) {
         }}
       >
         <div>
-          <div style={{ fontSize: '13.5px', fontWeight: '500' }}>{t.minDuration || '最小提醒耗时阈值 (秒)'}</div>
+          <div style={{ fontSize: '13.5px', fontWeight: '500' }}>最小提醒耗时阈值 (秒)</div>
           <div style={{ fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)', marginTop: '2px' }}>
-            {t.minDurationHint || '仅对单轮耗时超过该时长的任务提醒 (设为 0 秒提醒全部，避免日常短句快问快答频繁打扰)'}
+            仅对单轮耗时超过该时长的任务提醒 (设为 0 秒提醒全部，避免日常短句快问快答频繁打扰)
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>

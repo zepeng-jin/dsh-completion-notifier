@@ -132,7 +132,7 @@ export class NotifierService {
       const eventData = {
         type: 'test',
         title: 'DSH 任务完成',
-        subtitle: '⚡️ 耗时 3.5s (测试)',
+        subtitle: '耗时 3.5s (测试)',
         summary: sampleSummary,
         sessionId: 'current',
       };
@@ -157,7 +157,7 @@ export class NotifierService {
         source: { kind: 'user' },
       });
 
-      console.log(`[dsh-completion-notifier] ✨ 会话 "${session.id}" 已智能重命名为: 「${smartTitle}」`);
+      console.log(`[dsh-completion-notifier] 会话 "${session.id}" 已智能重命名为: 「${smartTitle}」`);
       return smartTitle;
     } catch (err) {
       console.warn('[dsh-completion-notifier] smartRenameSession error:', err.message);
@@ -248,8 +248,8 @@ export class NotifierService {
         const reason = event.data?.reason || '执行操作需要你的权限确认';
         const eventData = {
           type: 'approval',
-          title: '⚠️ DSH 等待权限审批',
-          subtitle: '点击进入会话授权',
+          title: 'DSH 权限审批确认',
+          subtitle: '等待授权执行',
           summary: `AI 正在请求执行「${toolName}」，${reason}`,
           sessionId,
         };
@@ -268,8 +268,8 @@ export class NotifierService {
           const planTitle = (planText.split('\n')[0] || '').replace(/^#+\s*/, '').trim() || '执行方案已制定';
           const eventData = {
             type: 'plan-review',
-            title: '📋 DSH 计划待审批',
-            subtitle: '点击查看并批准方案',
+            title: 'DSH 计划待审批',
+            subtitle: '方案已制定',
             summary: `AI 已提交计划「${planTitle}」，等待你确认批准以继续推进任务`,
             sessionId,
           };
@@ -283,8 +283,8 @@ export class NotifierService {
           const firstQ = questions[0]?.question || 'AI 遇到了需要你确认的技术决策';
           const eventData = {
             type: 'question',
-            title: '❓ DSH 等待你的选择',
-            subtitle: '需要你做出决策',
+            title: 'DSH 决策确认',
+            subtitle: '等待回复',
             summary: cleanSummary(firstQ),
             sessionId,
           };
@@ -338,7 +338,7 @@ export class NotifierService {
             const eventData = {
               type: 'completed',
               title: 'DSH 任务完成',
-              subtitle: `⚡️ 耗时 ${durationSec}s`,
+              subtitle: `耗时 ${durationSec}s`,
               summary,
               sessionId,
               durationSec,

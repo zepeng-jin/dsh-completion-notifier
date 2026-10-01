@@ -7,6 +7,7 @@
  * 4. Approval & Plan Mode Alerts: notify when waiting for permission ('allow'), plan review, or user questions
  * 5. Smart Session Titler: automatically summarizes clean titles after 1st turn, replacing dumb 'task ready'
  * 6. One-click batch fix for historic 'task ready' session titles
+ * 7. Clean SVG vector icons, zero emoji noise
  */
 
 if (typeof window !== 'undefined' && window.__ModuleLoader__) {
@@ -18,6 +19,58 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
       Object.defineProperty(exports, '__esModule', { value: true });
 
       const React = require('react');
+
+      /**
+       * 纯矢量 SVG 图标 (纯净、极简、随文字颜色自然适配)
+       */
+      function BellIcon(props) {
+        const { size = 15, style = {} } = props;
+        return React.createElement('svg', {
+          width: size,
+          height: size,
+          viewBox: '0 0 24 24',
+          fill: 'none',
+          stroke: 'currentColor',
+          strokeWidth: '1.75',
+          strokeLinecap: 'round',
+          strokeLinejoin: 'round',
+          style: { verticalAlign: '-2px', flexShrink: 0, ...style }
+        }, [
+          React.createElement('path', { key: 'p1', d: 'M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9' }),
+          React.createElement('path', { key: 'p2', d: 'M10.3 21a1.94 1.94 0 0 0 3.4 0' })
+        ]);
+      }
+
+      function WandIcon(props) {
+        const { size = 13, style = {} } = props;
+        return React.createElement('svg', {
+          width: size,
+          height: size,
+          viewBox: '0 0 24 24',
+          fill: 'none',
+          stroke: 'currentColor',
+          strokeWidth: '1.75',
+          strokeLinecap: 'round',
+          strokeLinejoin: 'round',
+          style: { verticalAlign: '-1px', flexShrink: 0, ...style }
+        }, [
+          React.createElement('path', { key: 'p1', d: 'm15 4-2 4 4-2-4 2 2 4' }),
+          React.createElement('path', { key: 'p2', d: 'M2 20h4l12-12-4-4L2 16v4Z' })
+        ]);
+      }
+
+      function PlayIcon(props) {
+        const { size = 11, style = {} } = props;
+        return React.createElement('svg', {
+          width: size,
+          height: size,
+          viewBox: '0 0 24 24',
+          fill: 'currentColor',
+          style: { verticalAlign: '-1px', flexShrink: 0, ...style }
+        }, [
+          React.createElement('polygon', { key: 'poly', points: '6 4 20 12 6 20 6 4' })
+        ]);
+      }
 
       /**
        * 原生 macOS 风格 Toggle Switch 开关组件（告别生硬方框复选框）
@@ -161,7 +214,7 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
           if (settings.enableBanner) {
             sendNativeNotification(ctx, {
               title: 'DSH 任务完成',
-              subtitle: '⚡️ 耗时 3.5s (测试)',
+              subtitle: '耗时 3.5s (测试)',
               summary: '已为你完成代码分析与重构，点击本横幅可直接跳转回此会话。',
               sessionId: 'current',
             });
@@ -227,7 +280,7 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
                 key: 'title-row',
                 style: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }
               }, [
-                React.createElement('span', { key: 'icon', style: { fontSize: '16px' } }, '🔔'),
+                React.createElement(BellIcon, { key: 'icon', size: 16 }),
                 React.createElement('span', {
                   key: 'h3',
                   style: { fontSize: '15px', fontWeight: '600' }
@@ -271,10 +324,13 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
                   cursor: cleaning ? 'not-allowed' : 'pointer',
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: '4px',
+                  gap: '6px',
                   transition: 'all 0.15s',
                 }
-              }, cleaning ? '正在提炼...' : '✨ 修复历史标题'),
+              }, [
+                React.createElement(WandIcon, { key: 'wand', size: 13 }),
+                React.createElement('span', { key: 'text' }, cleaning ? '正在提炼...' : '修复历史标题')
+              ]),
               React.createElement('button', {
                 key: 'btn-test',
                 type: 'button',
@@ -298,7 +354,10 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
                   transition: 'opacity 0.15s, transform 0.1s',
                   boxShadow: settings.enabled ? '0 1px 3px rgba(0, 122, 255, 0.25)' : 'none',
                 }
-              }, testing ? '测试中...' : '🔔 测试通知与声音')
+              }, [
+                React.createElement(PlayIcon, { key: 'play', size: 11 }),
+                React.createElement('span', { key: 'text' }, testing ? '测试中...' : '测试通知与声音')
+              ])
             ])
           ]),
 
@@ -391,7 +450,7 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
             ])
           ]),
 
-          // Row 4: 🌟 等待权限审批 (允许) 与 Plan 审核提醒
+          // Row 4: 等待权限审批 (允许) 与 Plan 审核提醒
           React.createElement('div', {
             key: 'row-approval',
             style: {
