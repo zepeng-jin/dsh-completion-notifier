@@ -1,0 +1,47 @@
+{
+  "name": "dsh-completion-notifier",
+  "version": "1.0.0",
+  "description": "DSH (DeepSeek Harness) 任务完成系统通知与声音提醒插件，原生集成 DSH 设置面板 · macOS native completion notifications and sound alerts with Settings UI for DeepSeek Harness",
+  "main": "index.js",
+  "type": "module",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "src"
+  ],
+  "keywords": [
+    "deepseek",
+    "dsh",
+    "dsh-plugin",
+    "notification",
+    "sound",
+    "alert",
+    "macos",
+    "settings-ui"
+  ],
+  "author": "zepengjin",
+  "license": "MIT",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-client-connection",
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-client-ui-slots"
+      ],
+      "platform": "web"
+    }
+  },
+  "peerDependencies": {
+    "react": "^18.2.0 || ^19.0.0"
+  }
+}
