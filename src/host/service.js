@@ -1,5 +1,21 @@
+import { execFile } from 'node:child_process';
 import { loadSettings, saveSettings } from './persist.js';
-import { playSound, speakText, showSystemBannerFallback } from './notifier.js';
+import { playSound, speakText } from './notifier.js';
+
+/**
+ * 仅在浏览器前端断连或无客户端时的 Host 兜底通知
+ */
+function showSystemBannerFallback(title, message, subtitle = '') {
+  if (process.platform !== 'darwin') return;
+  const safeTitle = (title || 'DSH 任务完成').replace(/[\\"]/g, '\\$&').replace(/[\r\n]+/g, ' ');
+  const safeMessage = (message || '对话已完成').replace(/[\\"]/g, '\\$&').replace(/[\r\n]+/g, ' ');
+  const safeSubtitle = (subtitle || '').replace(/[\\"]/g, '\\$&').replace(/[\r\n]+/g, ' ');
+
+  const subPart = safeSubtitle ? `subtitle "${safeSubtitle}"` : '';
+  const script = `display notification "${safeMessage}" with title "${safeTitle}" ${subPart}`;
+
+  execFile('osascript', ['-e', script], () => {});
+}
 
 /**
  * 判断标题是否为无脑的默认标题或机械指令
@@ -182,13 +198,19 @@ export class NotifierService {
       const smartTitle = extractSmartTitle(userPrompt, assistantSummary);
       if (!smartTitle) return;
 
-      session.append('session/title', {
-        title: smartTitle,
-        messageSeqs: [],
-        source: { kind: 'user' },
+      queueMicrotask(() => {
+        try {
+          session.append('session/title', {
+            title: smartTitle,
+            messageSeqs: [],
+            source: { kind: 'user' },
+          });
+          console.log(`[dsh-completion-notifier] 会话 "${session.id}" 已智能重命名为: 「${smartTitle}」`);
+        } catch (err) {
+          console.warn('[dsh-completion-notifier] smartRenameSession microtask error:', err.message);
+        }
       });
 
-      console.log(`[dsh-completion-notifier] 会话 "${session.id}" 已智能重命名为: 「${smartTitle}」`);
       return smartTitle;
     } catch (err) {
       console.warn('[dsh-completion-notifier] smartRenameSession error:', err.message);
