@@ -57,8 +57,8 @@ export function sendNativeNotification(ctx, eventData) {
 
   const title = eventData.title || 'DSH 任务完成';
   const body = eventData.subtitle
-    ? `${eventData.subtitle} · ${eventData.summary || '对话已完成'}`
-    : (eventData.summary || '对话已完成');
+    ? `${eventData.subtitle} · ${eventData.summary || '请查看会话详情'}`
+    : (eventData.summary || '请查看会话详情');
 
   try {
     const notification = new window.Notification(title, {
@@ -143,7 +143,6 @@ export function NotifierSettingsCard({ ctx }) {
     if (!settings || testing) return;
     setTesting(true);
 
-    // 1. 前端直接触发带 DSH 原生白鲸图标的通知，杜绝脚本编辑器与访达弹窗
     if (settings.enableBanner) {
       sendNativeNotification(ctx, {
         title: 'DSH 任务完成',
@@ -153,7 +152,6 @@ export function NotifierSettingsCard({ ctx }) {
       });
     }
 
-    // 2. 触发后端音效
     try {
       await fetch('/api/notifier/test', {
         method: 'POST',
@@ -212,7 +210,7 @@ export function NotifierSettingsCard({ ctx }) {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
             <span style={{ fontSize: '16px' }}>🔔</span>
-            <span style={{ fontSize: '15px', fontWeight: '600' }}>{t.title || '完成通知与智能标题'}</span>
+            <span style={{ fontSize: '15px', fontWeight: '600' }}>{t.title || '完成通知、审批提醒与智能标题'}</span>
             {tip && (
               <span
                 style={{
@@ -230,7 +228,7 @@ export function NotifierSettingsCard({ ctx }) {
             )}
           </div>
           <div style={{ fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)', lineHeight: '1.4' }}>
-            在 AI 任务执行完成时，通过 macOS 系统通知横幅、原生白鲸图标、对话摘要与清脆提示音提醒你；并在首轮对话后自动提炼清晰中文标题。
+            在 AI 对话完成或等待权限审批、Plan 审核与决策时，通过 macOS 系统通知横幅、原生白鲸图标与提示音提醒你；首轮对话后自动提炼清晰中文标题。
           </div>
         </div>
 
@@ -379,7 +377,29 @@ export function NotifierSettingsCard({ ctx }) {
         </div>
       </div>
 
-      {/* Row 4: 最小提醒耗时阈值 */}
+      {/* Row 4: 🌟 等待权限审批 (允许) 与 Plan 审核提醒 */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '13px 0',
+          borderBottom: '1px solid var(--dsw-alias-border-l1, rgba(128,128,128,0.1))',
+        }}
+      >
+        <div>
+          <div style={{ fontSize: '13.5px', fontWeight: '500' }}>等待权限审批与 Plan 提交通知</div>
+          <div style={{ fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)', marginTop: '2px' }}>
+            当 AI 等待权限授权（允许按钮）、Plan 计划审核或选择题时，发出系统通知与音效提醒，点击可直接进入会话决策
+          </div>
+        </div>
+        <Switch
+          checked={settings.notifyOnApproval !== false}
+          onChange={(val) => updateSetting('notifyOnApproval', val)}
+        />
+      </div>
+
+      {/* Row 5: 最小提醒耗时阈值 */}
       <div
         style={{
           display: 'flex',
@@ -421,7 +441,7 @@ export function NotifierSettingsCard({ ctx }) {
         </div>
       </div>
 
-      {/* Row 5: 自动智能提炼会话标题 */}
+      {/* Row 6: 自动智能提炼会话标题 */}
       <div
         style={{
           display: 'flex',

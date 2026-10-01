@@ -34,7 +34,6 @@ export function extractSmartTitle(userPrompt, assistantSummary) {
 
   // 如果用户提问有实质内容，优先提炼用户提问的核心意图
   if (cleanUser && cleanUser.length > 2) {
-    // 移除常见的口语开头
     cleanUser = cleanUser
       .replace(/^(请问|帮我|如何|怎么|为什么|能不能|可以|我想|请解释|请实现|请编写)/g, '')
       .replace(/[？?\!！。，,]+$/g, '')
@@ -90,7 +89,7 @@ export function cleanSummary(rawText) {
 export class NotifierService {
   constructor(ctx, initialConfig = {}) {
     this.ctx = ctx;
-    this.settings = { autoTitle: true, ...initialConfig };
+    this.settings = { autoTitle: true, notifyOnApproval: true, ...initialConfig };
     this.turnStartTimes = new Map();
     this.lastAssistantTexts = new Map();
     this.lastUserTexts = new Map();
@@ -103,7 +102,7 @@ export class NotifierService {
   async init() {
     const loaded = await loadSettings();
     if (this.disposed) return;
-    this.settings = { autoTitle: true, ...loaded, ...this.settings };
+    this.settings = { autoTitle: true, notifyOnApproval: true, ...loaded, ...this.settings };
     this.bindSessionEvents();
   }
 
@@ -152,7 +151,6 @@ export class NotifierService {
       const smartTitle = extractSmartTitle(userPrompt, assistantSummary);
       if (!smartTitle) return;
 
-      // 向 session 日志追加 session/title 事件，触发 DSH 侧边栏实时重绘
       session.append('session/title', {
         title: smartTitle,
         messageSeqs: [],
@@ -174,14 +172,12 @@ export class NotifierService {
     try {
       if (!this.ctx.sessions) return renamed;
 
-      // 遍历当前内存与活动会话
       for (const [id, session] of this.ctx.sessions.entries()) {
         const events = session.snapshotEvents ? session.snapshotEvents() : [];
         const titleEvent = events.findLast(e => e.type === 'session/title');
         const currentTitle = titleEvent?.data?.title || '';
 
         if (isDumbTitle(currentTitle)) {
-          // 寻找用户提问与助手回复
           const userMsg = events.find(e => e.type === 'user/message');
           const asstMsg = events.findLast(e => e.type === 'assistant/message');
 
@@ -245,7 +241,60 @@ export class NotifierService {
         }
       }
 
-      // 4. 轮次结算
+      // 4. 🌟 核心监听：权限审批等待（User Approval / 允许按钮）
+      if (event.type === 'approval/asked' && this.settings.notifyOnApproval) {
+        playSound('Ping');
+        const toolName = event.data?.toolName || '工具调用';
+        const reason = event.data?.reason || '执行操作需要你的权限确认';
+        const eventData = {
+          type: 'approval',
+          title: '⚠️ DSH 等待权限审批',
+          subtitle: '点击进入会话授权',
+          summary: `AI 正在请求执行「${toolName}」，${reason}`,
+          sessionId,
+        };
+        if (typeof this.broadcastToClients === 'function') {
+          this.broadcastToClients(eventData);
+        }
+      }
+
+      // 5. 🌟 核心监听：工具调用中的人类交互 (Plan 模式审核 & 用户提问选择题)
+      if (event.type === 'tool/call' && this.settings.notifyOnApproval) {
+        const toolName = event.data?.name;
+        if (toolName === 'exit_plan_mode') {
+          // Plan 计划待审批
+          playSound('Hero');
+          const planText = event.data?.arguments?.plan || '';
+          const planTitle = (planText.split('\n')[0] || '').replace(/^#+\s*/, '').trim() || '执行方案已制定';
+          const eventData = {
+            type: 'plan-review',
+            title: '📋 DSH 计划待审批',
+            subtitle: '点击查看并批准方案',
+            summary: `AI 已提交计划「${planTitle}」，等待你确认批准以继续推进任务`,
+            sessionId,
+          };
+          if (typeof this.broadcastToClients === 'function') {
+            this.broadcastToClients(eventData);
+          }
+        } else if (toolName === 'ask_user_question') {
+          // 用户问题提问 / 选择题
+          playSound('Ping');
+          const questions = event.data?.arguments?.questions || [];
+          const firstQ = questions[0]?.question || 'AI 遇到了需要你确认的技术决策';
+          const eventData = {
+            type: 'question',
+            title: '❓ DSH 等待你的选择',
+            subtitle: '需要你做出决策',
+            summary: cleanSummary(firstQ),
+            sessionId,
+          };
+          if (typeof this.broadcastToClients === 'function') {
+            this.broadcastToClients(eventData);
+          }
+        }
+      }
+
+      // 6. 轮次结算 (对话完成)
       if (event.type === 'turn/end') {
         const startTime = this.turnStartTimes.get(sessionId) || Date.now();
         const durationSec = Math.round(((Date.now() - startTime) / 1000) * 10) / 10;
@@ -258,7 +307,7 @@ export class NotifierService {
         const reason = event.data?.reason?.kind;
 
         if (reason === 'completed') {
-          // 🌟 核心增强：如果是第一次对话或当前会话标题为无脑标题，自动智能总结并重命名
+          // 智能总结会话标题
           if (this.settings.autoTitle) {
             try {
               const events = session.snapshotEvents ? session.snapshotEvents() : [];

@@ -4,8 +4,9 @@
  * 1. Native macOS Notification via Web Notification API (100% DSH Whale Icon, zero Script Editor)
  * 2. Click notification to focus window & jump to session (no Finder popup)
  * 3. Modern macOS-style Toggle Switches in Settings UI (no ugly square checkboxes)
- * 4. Smart Session Titler: automatically summarizes clean titles after 1st turn, replacing dumb 'task ready'
- * 5. One-click batch fix for historic 'task ready' session titles
+ * 4. Approval & Plan Mode Alerts: notify when waiting for permission ('allow'), plan review, or user questions
+ * 5. Smart Session Titler: automatically summarizes clean titles after 1st turn, replacing dumb 'task ready'
+ * 6. One-click batch fix for historic 'task ready' session titles
  */
 
 if (typeof window !== 'undefined' && window.__ModuleLoader__) {
@@ -71,8 +72,8 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
 
         const title = eventData.title || 'DSH 任务完成';
         const body = eventData.subtitle
-          ? `${eventData.subtitle} · ${eventData.summary || '对话已完成'}`
-          : (eventData.summary || '对话已完成');
+          ? `${eventData.subtitle} · ${eventData.summary || '请查看会话详情'}`
+          : (eventData.summary || '请查看会话详情');
 
         try {
           const notification = new window.Notification(title, {
@@ -230,7 +231,7 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
                 React.createElement('span', {
                   key: 'h3',
                   style: { fontSize: '15px', fontWeight: '600' }
-                }, '完成通知与智能标题'),
+                }, '完成通知、审批提醒与智能标题'),
                 tip && React.createElement('span', {
                   key: 'tip',
                   style: {
@@ -246,7 +247,7 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
               React.createElement('div', {
                 key: 'p',
                 style: { fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)', lineHeight: '1.4' }
-              }, '在 AI 任务执行完成时，通过 macOS 系统通知横幅、原生白鲸图标、对话摘要与提示音提醒你；并在首轮对话后自动提炼清晰中文标题。')
+              }, '在 AI 对话完成或等待权限审批、Plan 审核与决策时，通过 macOS 系统通知横幅、原生白鲸图标与提示音提醒你；首轮对话后自动提炼清晰中文标题。')
             ]),
             React.createElement('div', {
               key: 'btn-group',
@@ -390,7 +391,29 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
             ])
           ]),
 
-          // Row 4: 最小提醒耗时阈值
+          // Row 4: 🌟 等待权限审批 (允许) 与 Plan 审核提醒
+          React.createElement('div', {
+            key: 'row-approval',
+            style: {
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '13px 0',
+              borderBottom: '1px solid var(--dsw-alias-border-l1, rgba(128,128,128,0.1))',
+            }
+          }, [
+            React.createElement('div', { key: 'l-appr' }, [
+              React.createElement('div', { style: { fontSize: '13.5px', fontWeight: '500' } }, '等待权限审批与 Plan 提交通知'),
+              React.createElement('div', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)', marginTop: '2px' } }, '当 AI 等待权限授权（允许按钮）、Plan 计划审核或选择题时，发出系统通知与音效提醒，点击可直接进入会话决策')
+            ]),
+            React.createElement(Switch, {
+              key: 'sw-appr',
+              checked: settings.notifyOnApproval !== false,
+              onChange: (val) => updateSetting('notifyOnApproval', val)
+            })
+          ]),
+
+          // Row 5: 最小提醒耗时阈值
           React.createElement('div', {
             key: 'row-duration',
             style: {
@@ -432,7 +455,7 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
             ])
           ]),
 
-          // Row 5: 自动智能提炼会话标题
+          // Row 6: 自动智能提炼会话标题
           React.createElement('div', {
             key: 'row-autotitle',
             style: {
@@ -461,14 +484,12 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
       function setupNotificationListener(ctx) {
         if (typeof window === 'undefined') return;
 
-        // 请求系统通知权限
-        if (typeof window.Notification !== 'undefined' && window.Notification.permission === 'default') {
+        if (window.Notification && window.Notification.permission === 'default') {
           try {
             window.Notification.requestPermission();
           } catch (_) {}
         }
 
-        // 打开 SSE 实时通道
         try {
           const eventSource = new EventSource('/api/notifier/events');
 
@@ -495,10 +516,8 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
       }
 
       function apply(ctx) {
-        // 启动后台事件监听，负责原生白鲸通知分发与会话跳转
         setupNotificationListener(ctx);
 
-        // 注册到 DSH 设置通用分区 (settings.general.item)
         if (ctx.slots) {
           ctx.slots.inject('settings.general.item', () =>
             ctx.slots.register({
@@ -508,7 +527,6 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
             }, () => React.createElement(NotifierSettingsCard, { ctx }))
           );
 
-          // 同时注册到插件中心卡片插槽 (web-ui.plugin.item) 确保兼容
           ctx.slots.inject('web-ui.plugin.item', () =>
             ctx.slots.register({
               name: 'web-ui.plugin.item',
