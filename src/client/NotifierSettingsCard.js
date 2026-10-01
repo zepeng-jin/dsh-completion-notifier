@@ -1,5 +1,21 @@
 import React, { useState, useEffect } from 'react';
 
+const DEFAULT_UI_SETTINGS = {
+  enabled: true,
+  enableSound: true,
+  soundName: 'Glass',
+  enableBanner: true,
+  enableSpeech: false,
+  speechText: '任务已完成',
+  minDurationSec: 3,
+  notifyOnError: true,
+  notifyOnApproval: true,
+  autoTitle: true,
+  alertTiming: 'always',
+  autoJumpSession: false,
+  enableInAppToast: true,
+};
+
 /**
  * 原生 macOS 风格 Toggle Switch 开关（克制雅致的 Apple 蓝）
  */
@@ -42,8 +58,57 @@ function Switch({ checked, onChange, disabled }) {
   );
 }
 
+/**
+ * 弹出 DSH 原生白鲸图标系统横幅
+ */
+export function sendNativeNotification(ctx, eventData) {
+  if (typeof window === 'undefined' || typeof window.Notification === 'undefined') return;
+
+  if (window.Notification.permission === 'default') {
+    try {
+      window.Notification.requestPermission();
+    } catch (_) {}
+  }
+
+  const title = eventData.title || 'DSH 任务完成';
+  const body = eventData.subtitle
+    ? `${eventData.subtitle} · ${eventData.summary || '请查看会话详情'}`
+    : (eventData.summary || '请查看会话详情');
+
+  try {
+    const notification = new window.Notification(title, {
+      body,
+      tag: eventData.sessionId || 'dsh-notify',
+      renotify: true,
+    });
+
+    notification.onclick = () => {
+      try {
+        window.focus();
+
+        const sessionId = eventData.sessionId;
+        if (!sessionId || sessionId === 'current') return;
+
+        if (ctx && ctx.uiWorkspace && typeof ctx.uiWorkspace.openSession === 'function') {
+          ctx.uiWorkspace.openSession(sessionId);
+          return;
+        }
+
+        const selector = `[data-session-id="${sessionId}"], [data-id="${sessionId}"], a[href*="${sessionId}"]`;
+        const target = document.querySelector(selector);
+        if (target) target.click();
+      } catch (clickErr) {
+        console.warn('[dsh-completion-notifier] click navigate error:', clickErr);
+      }
+    };
+  } catch (err) {
+    console.warn('[dsh-completion-notifier] show notification error:', err);
+  }
+}
+
 export function NotifierSettingsCard({ ctx }) {
-  const [settings, setSettings] = useState(null);
+  // 🌟 立即渲染默认设置，绝不因加载中返回 null 导致空白透明
+  const [settings, setSettings] = useState(DEFAULT_UI_SETTINGS);
   const [sounds, setSounds] = useState([
     { id: 'Glass', name: 'Glass (玻璃清脆声 - 推荐)' },
     { id: 'Ping', name: 'Ping (清爽叮咚声)' },
@@ -57,10 +122,10 @@ export function NotifierSettingsCard({ ctx }) {
   const [tip, setTip] = useState('');
 
   useEffect(() => {
-    fetch('/api/notifier/settings')
+    fetch('/dsh-notifier/api/settings')
       .then(res => res.json())
       .then(data => {
-        if (data.ok) {
+        if (data.ok && data.settings) {
           setSettings(data.settings);
           if (data.availableSounds) setSounds(data.availableSounds);
         }
@@ -69,11 +134,10 @@ export function NotifierSettingsCard({ ctx }) {
   }, []);
 
   const updateSetting = async (key, val) => {
-    if (!settings) return;
     const next = { ...settings, [key]: val };
     setSettings(next);
     try {
-      await fetch('/api/notifier/settings', {
+      await fetch('/dsh-notifier/api/settings', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ [key]: val }),
@@ -86,11 +150,11 @@ export function NotifierSettingsCard({ ctx }) {
   };
 
   const handleTest = async () => {
-    if (!settings || testing) return;
+    if (testing) return;
     setTesting(true);
 
     try {
-      await fetch('/api/notifier/test', {
+      await fetch('/dsh-notifier/api/test', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(settings),
@@ -103,8 +167,6 @@ export function NotifierSettingsCard({ ctx }) {
       setTimeout(() => setTip(''), 2500);
     }
   };
-
-  if (!settings) return null;
 
   return (
     <div
@@ -203,7 +265,7 @@ export function NotifierSettingsCard({ ctx }) {
         />
       </div>
 
-      {/* Row 2: 提醒时机模式（全量提醒 vs 仅在后台/未聚焦时提醒） */}
+      {/* Row 2: 提醒时机模式 */}
       <div
         style={{
           display: 'flex',
@@ -217,7 +279,7 @@ export function NotifierSettingsCard({ ctx }) {
         <div>
           <div style={{ fontSize: '13.5px', fontWeight: '450' }}>提醒时机</div>
           <div style={{ fontSize: '12px', color: 'var(--dsw-alias-label-caption, #8a8f98)', marginTop: '2px' }}>
-            全量提醒：无论当前是否在使用 DSH 均提醒；仅未聚焦：在 DSH 内操作时静默，窗口最小化或切走时才提醒
+            全量提醒：无论当前是否在看 DSH 均提醒；仅未聚焦：在 DSH 内操作时静默，最小化或切走时才提醒
           </div>
         </div>
         <select
@@ -255,7 +317,7 @@ export function NotifierSettingsCard({ ctx }) {
         <div>
           <div style={{ fontSize: '13.5px', fontWeight: '450' }}>自动跳转到对应会话</div>
           <div style={{ fontSize: '12px', color: 'var(--dsw-alias-label-caption, #8a8f98)', marginTop: '2px' }}>
-            开启后，后台任务完成或停下来等待审批时，无需手动点击，DSH 自动将视图切入该会话
+            开启后，后台任务完成或停下来等待审批时，无需手动点击通知，DSH 自动将视图切入该会话
           </div>
         </div>
         <Switch
@@ -265,7 +327,7 @@ export function NotifierSettingsCard({ ctx }) {
         />
       </div>
 
-      {/* Row 4: DSH 应用内浮窗通知 */}
+      {/* Row 4: 前后台通知形式说明（智能分流） */}
       <div
         style={{
           display: 'flex',
@@ -277,9 +339,9 @@ export function NotifierSettingsCard({ ctx }) {
         }}
       >
         <div>
-          <div style={{ fontSize: '13.5px', fontWeight: '450' }}>DSH 应用内浮窗通知</div>
+          <div style={{ fontSize: '13.5px', fontWeight: '450' }}>前后台智能分流通知</div>
           <div style={{ fontSize: '12px', color: 'var(--dsw-alias-label-caption, #8a8f98)', marginTop: '2px' }}>
-            在 DSH 窗口右上角滑出轻量浮窗提示，彻底解决 macOS 系统在前台时默认静默屏蔽横幅的问题
+            在 DSH 窗口内只弹轻量应用内浮窗；窗口最小化或切走时只弹系统横幅，二者互斥，绝不重复弹窗
           </div>
         </div>
         <Switch
@@ -289,31 +351,7 @@ export function NotifierSettingsCard({ ctx }) {
         />
       </div>
 
-      {/* Row 5: macOS 系统通知横幅 */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '12px 0',
-          borderBottom: '1px solid var(--dsw-alias-border-l1, rgba(255, 255, 255, 0.06))',
-          opacity: settings.enabled ? 1 : 0.45,
-        }}
-      >
-        <div>
-          <div style={{ fontSize: '13.5px', fontWeight: '450' }}>macOS 系统通知横幅</div>
-          <div style={{ fontSize: '12px', color: 'var(--dsw-alias-label-caption, #8a8f98)', marginTop: '2px' }}>
-            通知中心弹出横幅提醒（附带 DSH 官方白鲸图标与对话摘要，点击直达会话）
-          </div>
-        </div>
-        <Switch
-          disabled={!settings.enabled}
-          checked={!!settings.enableBanner}
-          onChange={(val) => updateSetting('enableBanner', val)}
-        />
-      </div>
-
-      {/* Row 6: 完成提示音 */}
+      {/* Row 5: 完成提示音 */}
       <div
         style={{
           display: 'flex',
@@ -327,7 +365,7 @@ export function NotifierSettingsCard({ ctx }) {
         <div>
           <div style={{ fontSize: '13.5px', fontWeight: '450' }}>完成提示音</div>
           <div style={{ fontSize: '12px', color: 'var(--dsw-alias-label-caption, #8a8f98)', marginTop: '2px' }}>
-            任务结算时播放的系统高保真音效
+            任务结算时播放的系统音效
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -359,7 +397,7 @@ export function NotifierSettingsCard({ ctx }) {
         </div>
       </div>
 
-      {/* Row 7: 等待权限审批与 Plan 提交通知 */}
+      {/* Row 6: 等待权限审批与 Plan 提交通知 */}
       <div
         style={{
           display: 'flex',
@@ -383,7 +421,7 @@ export function NotifierSettingsCard({ ctx }) {
         />
       </div>
 
-      {/* Row 8: 最小提醒耗时阈值 */}
+      {/* Row 7: 最小提醒耗时阈值 */}
       <div
         style={{
           display: 'flex',
@@ -425,7 +463,7 @@ export function NotifierSettingsCard({ ctx }) {
         </div>
       </div>
 
-      {/* Row 9: 首轮对话智能提炼标题 */}
+      {/* Row 8: 首轮对话智能提炼标题 */}
       <div
         style={{
           display: 'flex',

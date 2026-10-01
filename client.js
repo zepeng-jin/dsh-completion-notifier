@@ -2,12 +2,12 @@
  * dsh-completion-notifier client bundle
  * Features:
  * 1. Dedicated Settings Sidebar Section ('settings.section') with pixel-perfect SVG Bell icon
- * 2. Native macOS Notification via Web Notification API (100% DSH Whale Icon)
- * 3. In-App Floating Toast Notification: 100% visible inside DSH
- * 4. 🌟 Smart Mutual Exclusivity: In-App Toast when focused inside DSH; macOS System Banner when in background. Never duplicate!
- * 5. Auto-Jump Session: automatically switches DSH to the session upon completion or approval request
- * 6. Alert Timing Mode: All-time alert (always) vs Unfocused/background only (unfocused)
- * 7. Click notification/toast to focus window & jump to session
+ * 2. Instant-render settings view (zero blank screen, default state fallback)
+ * 3. Dedicated /dsh-notifier/api namespace (bypasses DSH /api 401 gate)
+ * 4. In-App Floating Toast Notification: 100% visible inside DSH
+ * 5. Smart Mutual Exclusivity: In-App Toast when focused inside DSH; macOS System Banner when in background. Never duplicate!
+ * 6. Auto-Jump Session: automatically switches DSH to the session upon completion or approval request
+ * 7. Alert Timing Mode: All-time alert (always) vs Unfocused/background only (unfocused)
  * 8. Refined Apple-style Toggle Switches & dark-mode styling
  * 9. Approval & Plan Mode Alerts
  * 10. Smart Session Titler
@@ -23,12 +23,28 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
 
       const React = require('react');
 
+      const DEFAULT_UI_SETTINGS = {
+        enabled: true,
+        enableSound: true,
+        soundName: 'Glass',
+        enableBanner: true,
+        enableSpeech: false,
+        speechText: '任务已完成',
+        minDurationSec: 3,
+        notifyOnError: true,
+        notifyOnApproval: true,
+        autoTitle: true,
+        alertTiming: 'always',
+        autoJumpSession: false,
+        enableInAppToast: true,
+      };
+
       // 客户端内存配置缓存
       let activeSettings = null;
 
       function fetchSettingsSync() {
         if (typeof fetch === 'function') {
-          fetch('/api/notifier/settings')
+          fetch('/dsh-notifier/api/settings')
             .then(res => res.json())
             .then(data => {
               if (data.ok && data.settings) {
@@ -219,27 +235,20 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
       }
 
       /**
-       * 🌟 统一事件调度中心 (严格前后台智能互斥分流，绝不重复弹窗)
+       * 🌟 统一事件调度中心 (前后台绝对互斥分流，绝不重复弹窗)
        */
       function handleIncomingNotification(ctx, eventData) {
-        const s = activeSettings || {
-          enabled: true,
-          enableBanner: true,
-          alertTiming: 'always',
-          autoJumpSession: false,
-          enableInAppToast: true,
-        };
-
+        const s = activeSettings || DEFAULT_UI_SETTINGS;
         if (!s.enabled) return;
 
         const isFocused = typeof document !== 'undefined' && document.hasFocus();
 
-        // 1. 检查提醒时机模式 (若用户选了"仅未聚焦/后台提醒"，且此时正在使用 DSH，则静默)
+        // 1. 检查提醒时机模式
         if (s.alertTiming === 'unfocused' && isFocused && eventData.type !== 'test') {
           return;
         }
 
-        // 2. 检查是否开启了"自动跳转到对应会话"
+        // 2. 检查自动跳转
         if (s.autoJumpSession && eventData.sessionId && eventData.sessionId !== 'current') {
           try {
             const currentId = ctx && ctx.uiWorkspace?.mainReference?.sessionId;
@@ -249,14 +258,12 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
           } catch (_) {}
         }
 
-        // 3. 🌟 核心突破：前后台绝对互斥分流（绝不两个一起弹）！
+        // 3. 🌟 绝对互斥分流：在 DSH 内只出应用内浮窗，切走只出系统横幅
         if (isFocused) {
-          // A: 用户正在注视 DSH 窗口内 -> 只展示应用内浮窗 Toast！绝不弹系统横幅！
           if (s.enableInAppToast !== false) {
             showInAppToast(ctx, eventData);
           }
         } else {
-          // B: 用户不在 DSH 窗口内（窗口最小化、切到后台、在看其他软件）-> 只弹 macOS 系统通知横幅！
           if (s.enableBanner !== false) {
             sendNativeNotification(ctx, eventData);
           }
@@ -264,11 +271,11 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
       }
 
       /**
-       * 设置面板主视图
+       * 设置面板主视图（默认值兜底，永不返回 null）
        */
       function NotifierSettingsView(props) {
         const { ctx } = props;
-        const [settings, setSettings] = React.useState(null);
+        const [settings, setSettings] = React.useState(activeSettings || DEFAULT_UI_SETTINGS);
         const [sounds, setSounds] = React.useState([
           { id: 'Glass', name: 'Glass (玻璃清脆声 - 推荐)' },
           { id: 'Ping', name: 'Ping (清爽叮咚声)' },
@@ -282,10 +289,10 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
         const [tip, setTip] = React.useState('');
 
         React.useEffect(() => {
-          fetch('/api/notifier/settings')
+          fetch('/dsh-notifier/api/settings')
             .then(res => res.json())
             .then(data => {
-              if (data.ok) {
+              if (data.ok && data.settings) {
                 setSettings(data.settings);
                 activeSettings = data.settings;
                 if (data.availableSounds) setSounds(data.availableSounds);
@@ -295,12 +302,11 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
         }, []);
 
         const updateSetting = async (key, val) => {
-          if (!settings) return;
           const next = { ...settings, [key]: val };
           setSettings(next);
           activeSettings = next;
           try {
-            await fetch('/api/notifier/settings', {
+            await fetch('/dsh-notifier/api/settings', {
               method: 'POST',
               headers: { 'content-type': 'application/json' },
               body: JSON.stringify({ [key]: val }),
@@ -313,7 +319,7 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
         };
 
         const handleTest = async () => {
-          if (!settings || testing) return;
+          if (testing) return;
           setTesting(true);
 
           handleIncomingNotification(ctx, {
@@ -325,7 +331,7 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
           });
 
           try {
-            await fetch('/api/notifier/test', {
+            await fetch('/dsh-notifier/api/test', {
               method: 'POST',
               headers: { 'content-type': 'application/json' },
               body: JSON.stringify(settings),
@@ -338,8 +344,6 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
             setTimeout(() => setTip(''), 2500);
           }
         };
-
-        if (!settings) return null;
 
         return React.createElement('div', {
           style: {
@@ -437,7 +441,7 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
             })
           ]),
 
-          // Row 2: 提醒时机模式（全量提醒 vs 仅在后台/未聚焦时提醒）
+          // Row 2: 提醒时机模式
           React.createElement('div', {
             key: 'row-timing',
             style: {
@@ -668,7 +672,7 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
         }
 
         try {
-          const eventSource = new EventSource('/api/notifier/events');
+          const eventSource = new EventSource('/dsh-notifier/api/events');
 
           eventSource.onmessage = (e) => {
             if (!e.data) return;
