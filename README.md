@@ -6,7 +6,7 @@
 [![Platform](https://img.shields.io/badge/Platform-macOS-lightgrey.svg)]()
 [![DSH](https://img.shields.io/badge/DSH-Plugin-007AFF.svg)](https://github.com/deepseek-ai)
 
-> **DSH (DeepSeek Harness) 任务完成系统通知与声音提醒插件**  
+> **DSH (DeepSeek Harness) 系统通知与声音提醒插件**  
 > 原生集成 DSH 设置面板，对话与长耗时任务完成后自动触发 macOS 系统通知横幅、清脆提示音或语音提醒。
 
 ---
@@ -106,7 +106,7 @@ dsh-completion-notifier/
    ```
 
 3. **重启 DSH Desktop**：
-   重启应用后，进入 **设置 (Settings)** 页面，即可看到全新的 **「任务完成通知 (Completion Notifier)」** 配置卡片！点击 **「🔔 测试通知与声音」** 可立即验证。
+   重启应用后，进入 **设置 (Settings)** 页面，即可看到全新的 **「通知」** 配置卡片！点击 **「🔔 测试通知与声音」** 可立即验证。
 
 ---
 

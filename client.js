@@ -98,7 +98,7 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
               React.createElement('h3', {
                 key: 'h3',
                 style: { margin: '0 0 4px 0', fontSize: '15px', fontWeight: '600' }
-              }, '任务完成通知 (Completion Notifier)'),
+              }, '通知'),
               React.createElement('p', {
                 key: 'p',
                 style: { margin: 0, fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)' }

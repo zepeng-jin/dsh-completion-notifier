@@ -1,5 +1,5 @@
 export const zh = {
-  title: '任务完成通知与声音 (Completion Notifier)',
+  title: '通知',
   description: '在 AI 任务或对话完成时，通过 macOS 系统通知横幅、清脆提示音或语音进行提醒。',
   enabled: '启用完成通知',
   enabledHint: '总开关：开启后在任务结算时进行系统级提醒',
@@ -20,7 +20,7 @@ export const zh = {
 };
 
 export const en = {
-  title: 'Completion Notifier',
+  title: 'Notifications',
   description: 'Native macOS system banners, crisp sound alerts, and speech notification upon task completion.',
   enabled: 'Enable Notifications',
   enabledHint: 'Master switch: alert when conversation turn or task completes',
