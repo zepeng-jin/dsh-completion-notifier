@@ -1,13 +1,14 @@
 /**
  * dsh-completion-notifier client bundle
  * Features:
- * 1. Native macOS Notification via Web Notification API (100% DSH Whale Icon, zero Script Editor)
- * 2. Click notification to focus window & jump to session (no Finder popup)
- * 3. Modern macOS-style Toggle Switches in Settings UI (no ugly square checkboxes)
- * 4. Approval & Plan Mode Alerts: notify when waiting for permission ('allow'), plan review, or user questions
- * 5. Smart Session Titler: automatically summarizes clean titles after 1st turn, replacing dumb 'task ready'
- * 6. One-click batch fix for historic 'task ready' session titles
- * 7. Clean SVG vector icons, zero emoji noise
+ * 1. Dedicated Settings Sidebar Section ('settings.section') with native Bell icon
+ * 2. Native macOS Notification via Web Notification API (100% DSH Whale Icon, zero Script Editor)
+ * 3. Click notification to focus window & jump to session (no Finder popup)
+ * 4. Modern macOS-style Toggle Switches in Settings UI (no ugly square checkboxes)
+ * 5. Approval & Plan Mode Alerts: notify when waiting for permission ('allow'), plan review, or user questions
+ * 6. Smart Session Titler: automatically summarizes clean titles after 1st turn, replacing dumb 'task ready'
+ * 7. One-click batch fix for historic 'task ready' session titles
+ * 8. Clean SVG vector icons, zero emoji noise
  */
 
 if (typeof window !== 'undefined' && window.__ModuleLoader__) {
@@ -21,7 +22,7 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
       const React = require('react');
 
       /**
-       * 纯矢量 SVG 图标 (纯净、极简、随文字颜色自然适配)
+       * 纯矢量 SVG 图标集 (极简克制，随文字颜色自然变换)
        */
       function BellIcon(props) {
         const { size = 15, style = {} } = props;
@@ -162,8 +163,11 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
         }
       }
 
-      function NotifierSettingsCard(props) {
-        const { ctx } = props;
+      /**
+       * 设置内容组件（既可用作独立侧边栏大面板，也可用作通用设置子卡片）
+       */
+      function NotifierSettingsView(props) {
+        const { ctx, isStandalonePage = false } = props;
         const [settings, setSettings] = React.useState(null);
         const [sounds, setSounds] = React.useState([
           { id: 'Glass', name: 'Glass (玻璃清脆声 - 推荐)' },
@@ -258,19 +262,20 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
 
         return React.createElement('div', {
           style: {
-            padding: '8px 0 16px 0',
+            padding: isStandalonePage ? '0 8px 32px 8px' : '8px 0 16px 0',
             fontFamily: 'inherit',
             color: 'var(--dsw-alias-label-primary, inherit)',
+            maxWidth: '860px',
           }
         }, [
-          // 顶部标题与测试操作栏
+          // 顶部标题与操作栏
           React.createElement('div', {
             key: 'header',
             style: {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              paddingBottom: '14px',
+              paddingBottom: '16px',
               borderBottom: '1px solid var(--dsw-alias-border-l1, rgba(128,128,128,0.12))',
               gap: '12px'
             }
@@ -278,13 +283,13 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
             React.createElement('div', { key: 'title-box' }, [
               React.createElement('div', {
                 key: 'title-row',
-                style: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }
+                style: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }
               }, [
-                React.createElement(BellIcon, { key: 'icon', size: 16 }),
+                React.createElement(BellIcon, { key: 'icon', size: isStandalonePage ? 18 : 16 }),
                 React.createElement('span', {
                   key: 'h3',
-                  style: { fontSize: '15px', fontWeight: '600' }
-                }, '完成通知、审批提醒与智能标题'),
+                  style: { fontSize: isStandalonePage ? '17px' : '15px', fontWeight: '600' }
+                }, '通知与智能标题'),
                 tip && React.createElement('span', {
                   key: 'tip',
                   style: {
@@ -299,8 +304,8 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
               ]),
               React.createElement('div', {
                 key: 'p',
-                style: { fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)', lineHeight: '1.4' }
-              }, '在 AI 对话完成或等待权限审批、Plan 审核与决策时，通过 macOS 系统通知横幅、原生白鲸图标与提示音提醒你；首轮对话后自动提炼清晰中文标题。')
+                style: { fontSize: '13px', color: 'var(--dsw-alias-label-caption, #888)', lineHeight: '1.45' }
+              }, '在 AI 任务结算或等待审批决策时进行原生系统通知与声音提醒；首轮对话后自动提炼清晰中文标题。')
             ]),
             React.createElement('div', {
               key: 'btn-group',
@@ -368,12 +373,12 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              padding: '13px 0',
+              padding: '14px 0',
               borderBottom: '1px solid var(--dsw-alias-border-l1, rgba(128,128,128,0.1))'
             }
           }, [
             React.createElement('div', { key: 'l1' }, [
-              React.createElement('div', { style: { fontSize: '13.5px', fontWeight: '500' } }, '启用完成通知'),
+              React.createElement('div', { style: { fontSize: '14px', fontWeight: '500' } }, '启用完成通知'),
               React.createElement('div', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)', marginTop: '2px' } }, '总开关：对话完成时进行通知提醒')
             ]),
             React.createElement(Switch, {
@@ -390,13 +395,13 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              padding: '13px 0',
+              padding: '14px 0',
               borderBottom: '1px solid var(--dsw-alias-border-l1, rgba(128,128,128,0.1))',
               opacity: settings.enabled ? 1 : 0.5
             }
           }, [
             React.createElement('div', { key: 'l2' }, [
-              React.createElement('div', { style: { fontSize: '13.5px', fontWeight: '500' } }, 'macOS 系统通知横幅'),
+              React.createElement('div', { style: { fontSize: '14px', fontWeight: '500' } }, 'macOS 系统通知横幅'),
               React.createElement('div', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)', marginTop: '2px' } }, '通知中心弹出横幅提醒 (附带 DSH 官方白鲸图标、单轮耗时与对话精炼摘要，点击跳转对应会话)')
             ]),
             React.createElement(Switch, {
@@ -414,13 +419,13 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              padding: '13px 0',
+              padding: '14px 0',
               borderBottom: '1px solid var(--dsw-alias-border-l1, rgba(128,128,128,0.1))',
               opacity: settings.enabled ? 1 : 0.5
             }
           }, [
             React.createElement('div', { key: 'l3' }, [
-              React.createElement('div', { style: { fontSize: '13.5px', fontWeight: '500' } }, '完成提示音'),
+              React.createElement('div', { style: { fontSize: '14px', fontWeight: '500' } }, '完成提示音'),
               React.createElement('div', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)', marginTop: '2px' } }, '任务结算时播放的系统高保真音效')
             ]),
             React.createElement('div', { key: 'r3', style: { display: 'flex', alignItems: 'center', gap: '10px' } }, [
@@ -457,12 +462,12 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              padding: '13px 0',
+              padding: '14px 0',
               borderBottom: '1px solid var(--dsw-alias-border-l1, rgba(128,128,128,0.1))',
             }
           }, [
             React.createElement('div', { key: 'l-appr' }, [
-              React.createElement('div', { style: { fontSize: '13.5px', fontWeight: '500' } }, '等待权限审批与 Plan 提交通知'),
+              React.createElement('div', { style: { fontSize: '14px', fontWeight: '500' } }, '等待权限审批与 Plan 提交通知'),
               React.createElement('div', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)', marginTop: '2px' } }, '当 AI 等待权限授权（允许按钮）、Plan 计划审核或选择题时，发出系统通知与音效提醒，点击可直接进入会话决策')
             ]),
             React.createElement(Switch, {
@@ -479,15 +484,21 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              padding: '13px 0',
+              padding: '14px 0',
               borderBottom: '1px solid var(--dsw-alias-border-l1, rgba(128,128,128,0.1))',
               opacity: settings.enabled ? 1 : 0.5
             }
           }, [
             React.createElement('div', { key: 'l4' }, [
-              React.createElement('div', { style: { fontSize: '13.5px', fontWeight: '500' } }, '最小提醒耗时阈值 (秒)'),
+              React.createElement('div', { style: { fontSize: '14px', fontWeight: '500' } }, '最小提醒耗时阈值 (秒)'),
               React.createElement('div', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)', marginTop: '2px' } }, '仅对单轮耗时超过该时长的任务提醒 (设为 0 秒提醒全部，避免日常短句快问快答频繁打扰)')
             ]),
+            React.createElement(Switch, {
+              key: 'sw4',
+              disabled: !settings.enabled,
+              checked: true,
+              onChange: () => {}
+            }),
             React.createElement('div', { key: 'r4', style: { display: 'flex', alignItems: 'center', gap: '6px' } }, [
               React.createElement('input', {
                 key: 'num',
@@ -521,11 +532,11 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              padding: '13px 0'
+              padding: '14px 0'
             }
           }, [
             React.createElement('div', { key: 'l5' }, [
-              React.createElement('div', { style: { fontSize: '13.5px', fontWeight: '500' } }, '首轮对话智能提炼标题'),
+              React.createElement('div', { style: { fontSize: '14px', fontWeight: '500' } }, '首轮对话智能提炼标题'),
               React.createElement('div', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-caption, #888)', marginTop: '2px' } }, '首轮对话完成后，根据实际意图自动生成 6~10 字清晰中文标题（彻底解决 task ready 机械命名）')
             ]),
             React.createElement(Switch, {
@@ -574,24 +585,95 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
         }
       }
 
+      /**
+       * 注入设置面板左侧导航图标 (使用纯矢量 SVG mask 替换通用小齿轮)
+       */
+      function installSidebarNavIcon(ctx) {
+        if (typeof document === 'undefined') return;
+
+        ctx.effect(() => {
+          const bellSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>';
+          const maskUrl = 'data:image/svg+xml,' + encodeURIComponent(bellSvg);
+
+          const tag = document.createElement('style');
+          tag.dataset.plugin = 'dsh-completion-notifier';
+          tag.textContent = [
+            '[data-dsh-notifier-nav] > svg { display: none !important; }',
+            '[data-dsh-notifier-nav]::before {',
+            '  content: "";',
+            '  display: inline-block;',
+            '  width: 16px;',
+            '  height: 16px;',
+            '  margin-right: 8px;',
+            '  background-color: currentColor;',
+            `  -webkit-mask: url("${maskUrl}") no-repeat center;`,
+            `  mask: url("${maskUrl}") no-repeat center;`,
+            '  -webkit-mask-size: contain;',
+            '  mask-size: contain;',
+            '  flex-shrink: 0;',
+            '}',
+          ].join('\n');
+          document.head.appendChild(tag);
+
+          let disposed = false;
+          let scheduled = false;
+          const sync = () => {
+            scheduled = false;
+            if (disposed) return;
+            const buttons = document.querySelectorAll('[role="dialog"] nav button');
+            for (const btn of buttons) {
+              const text = (btn.textContent || '').trim();
+              if (text.includes('通知与标题') || (text.includes('通知') && (text.includes('提醒') || text.includes('设置')))) {
+                btn.setAttribute('data-dsh-notifier-nav', '');
+              } else {
+                btn.removeAttribute('data-dsh-notifier-nav');
+              }
+            }
+          };
+
+          const schedule = () => {
+            if (scheduled || disposed) return;
+            scheduled = true;
+            queueMicrotask(sync);
+          };
+
+          sync();
+          const observer = new MutationObserver(schedule);
+          observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+
+          return () => {
+            disposed = true;
+            observer.disconnect();
+            for (const el of document.querySelectorAll('[data-dsh-notifier-nav]')) {
+              el.removeAttribute('data-dsh-notifier-nav');
+            }
+            tag.remove();
+          };
+        }, 'dsh-completion-notifier: sidebar nav icon');
+      }
+
       function apply(ctx) {
         setupNotificationListener(ctx);
+        installSidebarNavIcon(ctx);
 
         if (ctx.slots) {
+          // 🌟 核心升级：正式注册为 DSH 设置左侧边栏专属一级 Section！
+          ctx.slots.inject('settings.section', () =>
+            ctx.slots.register({
+              name: 'settings.section',
+              id: 'notifier',
+              order: 35, // 优雅排列在左侧边栏中
+              label: () => '通知与标题',
+            }, (ownerProps = {}) => React.createElement(NotifierSettingsView, { ctx, isStandalonePage: true, ...ownerProps }))
+          );
+
+          // 同时保留通用设置分区作为子卡片入口（双入口自由访问）
           ctx.slots.inject('settings.general.item', () =>
             ctx.slots.register({
               name: 'settings.general.item',
               id: 'dsh-completion-notifier-settings',
               order: 250,
-            }, () => React.createElement(NotifierSettingsCard, { ctx }))
-          );
-
-          ctx.slots.inject('web-ui.plugin.item', () =>
-            ctx.slots.register({
-              name: 'web-ui.plugin.item',
-              id: 'dsh-completion-notifier-plugin-card',
-              order: 150,
-            }, () => React.createElement(NotifierSettingsCard, { ctx }))
+            }, () => React.createElement(NotifierSettingsView, { ctx, isStandalonePage: false }))
           );
         }
       }
