@@ -668,13 +668,7 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
           );
 
           // 同时保留通用设置分区作为子卡片入口（双入口自由访问）
-          ctx.slots.inject('settings.general.item', () =>
-            ctx.slots.register({
-              name: 'settings.general.item',
-              id: 'dsh-completion-notifier-settings',
-              order: 250,
-            }, () => React.createElement(NotifierSettingsView, { ctx, isStandalonePage: false }))
-          );
+          
         }
       }
 
