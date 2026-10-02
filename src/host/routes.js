@@ -27,7 +27,6 @@ function readBody(req) {
 export function makeNotifierRoutes(service, triggerReload) {
   const sseClients = new Set();
 
-  // 提供给 service 广播事件到所有前端连接
   service.broadcastToClients = (eventData) => {
     const payload = `data: ${JSON.stringify(eventData)}\n\n`;
     for (const client of sseClients) {
@@ -113,38 +112,16 @@ export function makeNotifierRoutes(service, triggerReload) {
     }
   };
 
-  const cleanTitlesHandler = async (req, res) => {
-    if (req.method !== 'POST') {
-      res.writeHead(405);
-      res.end();
-      return;
-    }
-    try {
-      const renamed = typeof service.cleanDumbTitles === 'function' ? service.cleanDumbTitles() : [];
-      return json(res, 200, {
-        ok: true,
-        count: renamed.length,
-        message: `已成功扫描并智能重命名 ${renamed.length} 个历史无脑标题会话`,
-        renamed,
-      });
-    } catch (err) {
-      return json(res, 500, { ok: false, error: err.message });
-    }
-  };
-
   return [
-    // 🌟 独立非 /api 命名空间，完美绕过 dsh-client-connection 401 拦截
     { kind: 'exact', path: '/dsh-notifier/api/events', handler: eventsHandler },
     { kind: 'exact', path: '/dsh-notifier/api/settings', handler: settingsHandler },
     { kind: 'exact', path: '/dsh-notifier/api/test', handler: testHandler },
     { kind: 'exact', path: '/dsh-notifier/api/reload', handler: reloadHandler },
-    { kind: 'exact', path: '/dsh-notifier/api/clean-titles', handler: cleanTitlesHandler },
 
     // 兼容别名
     { kind: 'exact', path: '/api/notifier/events', handler: eventsHandler },
     { kind: 'exact', path: '/api/notifier/settings', handler: settingsHandler },
     { kind: 'exact', path: '/api/notifier/test', handler: testHandler },
     { kind: 'exact', path: '/api/notifier/reload', handler: reloadHandler },
-    { kind: 'exact', path: '/api/notifier/clean-titles', handler: cleanTitlesHandler },
   ];
 }

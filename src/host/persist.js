@@ -13,10 +13,9 @@ export const DEFAULT_SETTINGS = {
   minDurationSec: 3, // 默认仅提醒耗时超过 3 秒的任务
   notifyOnError: true,
   notifyOnApproval: true, // 等待权限审批 (允许)、Plan 审核或选择题时进行提醒
-  autoTitle: true, // 自动智能提炼首轮会话标题 (彻底告别无脑的 task ready)
-  alertTiming: 'always', // 'always' (全量提醒: 无论前后台均提醒) | 'unfocused' (仅在未聚焦/后台时提醒)
-  autoJumpSession: false, // 是否自动跳转到对应会话 (完成或需要审批时自动切入)
-  enableInAppToast: true, // 在 DSH 窗口内弹出应用内横幅浮窗 (前台 100% 可见，防系统横幅静默)
+  alertTiming: 'always', // 'always' (全量提醒) | 'unfocused' (仅在未聚焦/后台时提醒)
+  autoJumpSession: false, // 是否自动跳转到对应会话
+  enableInAppToast: true, // 在 DSH 窗口内弹出应用内横幅浮窗
 };
 
 export const AVAILABLE_SOUNDS = [

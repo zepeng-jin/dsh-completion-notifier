@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "完成通知与审批提醒 (dsh-completion-notifier)",
-    "description": "任务结算或等待权限授权、Plan审核时，触发系统通知横幅与提示音，点击直达会话。"
+    "description": "任务完成或等待权限授权、Plan 审核与决策时，触发 macOS 原生通知横幅与提示音，点击直达会话。"
   }
 }

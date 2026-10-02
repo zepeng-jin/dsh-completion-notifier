@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Completion Notifier (dsh-completion-notifier)",
-    "description": "Triggers native notification banners and sound alerts upon task completion or when waiting for user approval/plan review."
+    "description": "macOS native completion notification banners and sound alerts for tasks and human approval/plan reviews."
   }
 }

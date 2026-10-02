@@ -10,7 +10,6 @@ const DEFAULT_UI_SETTINGS = {
   minDurationSec: 3,
   notifyOnError: true,
   notifyOnApproval: true,
-  autoTitle: true,
   alertTiming: 'always',
   autoJumpSession: false,
   enableInAppToast: true,
@@ -107,7 +106,6 @@ export function sendNativeNotification(ctx, eventData) {
 }
 
 export function NotifierSettingsCard({ ctx }) {
-  // 🌟 立即渲染默认设置，绝不因加载中返回 null 导致空白透明
   const [settings, setSettings] = useState(DEFAULT_UI_SETTINGS);
   const [sounds, setSounds] = useState([
     { id: 'Glass', name: 'Glass (玻璃清脆声 - 推荐)' },
@@ -191,7 +189,7 @@ export function NotifierSettingsCard({ ctx }) {
         <div style={{ minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ fontSize: '15px', fontWeight: '500', whiteSpace: 'nowrap' }}>
-              通知与标题
+              完成通知与审批提醒
             </span>
             {tip && (
               <span
@@ -215,7 +213,7 @@ export function NotifierSettingsCard({ ctx }) {
               lineHeight: '1.4',
             }}
           >
-            管理系统通知、应用内浮窗、聚焦时提醒模式与会话智能命名。
+            管理系统通知、应用内浮窗、等待审批决策提醒与声音效果。
           </div>
         </div>
 
@@ -405,7 +403,7 @@ export function NotifierSettingsCard({ ctx }) {
           justifyContent: 'space-between',
           padding: '12px 0',
           borderBottom: '1px solid var(--dsw-alias-border-l1, rgba(255, 255, 255, 0.06))',
-          opacity: settings.enabled ? 1 : 0.45,
+          opacity: settings.enabled ? 1 : 0.45
         }}
       >
         <div>
@@ -428,8 +426,7 @@ export function NotifierSettingsCard({ ctx }) {
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '12px 0',
-          borderBottom: '1px solid var(--dsw-alias-border-l1, rgba(255, 255, 255, 0.06))',
-          opacity: settings.enabled ? 1 : 0.45,
+          opacity: settings.enabled ? 1 : 0.45
         }}
       >
         <div>
@@ -461,27 +458,6 @@ export function NotifierSettingsCard({ ctx }) {
           />
           <span style={{ fontSize: '12px', color: 'var(--dsw-alias-label-caption, #8a8f98)' }}>秒</span>
         </div>
-      </div>
-
-      {/* Row 8: 首轮对话智能提炼标题 */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '12px 0',
-        }}
-      >
-        <div>
-          <div style={{ fontSize: '13.5px', fontWeight: '450' }}>首轮对话智能提炼标题</div>
-          <div style={{ fontSize: '12px', color: 'var(--dsw-alias-label-caption, #8a8f98)', marginTop: '2px' }}>
-            首轮对话完成后，根据实际意图自动生成清晰中文标题（彻底替换 task ready）
-          </div>
-        </div>
-        <Switch
-          checked={settings.autoTitle !== false}
-          onChange={(val) => updateSetting('autoTitle', val)}
-        />
       </div>
     </div>
   );

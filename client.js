@@ -9,8 +9,7 @@
  * 6. Auto-Jump Session: automatically switches DSH to the session upon completion or approval request
  * 7. Alert Timing Mode: All-time alert (always) vs Unfocused/background only (unfocused)
  * 8. Refined Apple-style Toggle Switches & dark-mode styling
- * 9. Approval & Plan Mode Alerts
- * 10. Smart Session Titler
+ * 9. Approval & Plan Mode Alerts (Human-in-the-loop notifications)
  */
 
 if (typeof window !== 'undefined' && window.__ModuleLoader__) {
@@ -33,13 +32,11 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
         minDurationSec: 3,
         notifyOnError: true,
         notifyOnApproval: true,
-        autoTitle: true,
         alertTiming: 'always',
         autoJumpSession: false,
         enableInAppToast: true,
       };
 
-      // 客户端内存配置缓存
       let activeSettings = null;
 
       function fetchSettingsSync() {
@@ -235,7 +232,7 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
       }
 
       /**
-       * 🌟 统一事件调度中心 (前后台绝对互斥分流，绝不重复弹窗)
+       * 统一事件调度中心 (前后台绝对互斥分流，绝不重复弹窗)
        */
       function handleIncomingNotification(ctx, eventData) {
         const s = activeSettings || DEFAULT_UI_SETTINGS;
@@ -258,7 +255,7 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
           } catch (_) {}
         }
 
-        // 3. 🌟 绝对互斥分流：在 DSH 内只出应用内浮窗，切走只出系统横幅
+        // 3. 绝对互斥分流：在 DSH 内只出应用内浮窗，切走只出系统横幅
         if (isFocused) {
           if (s.enableInAppToast !== false) {
             showInAppToast(ctx, eventData);
@@ -271,7 +268,7 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
       }
 
       /**
-       * 设置面板主视图（默认值兜底，永不返回 null）
+       * 设置面板主视图
        */
       function NotifierSettingsView(props) {
         const { ctx } = props;
@@ -373,7 +370,7 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
                 React.createElement('span', {
                   key: 'h3',
                   style: { fontSize: '15px', fontWeight: '500', whiteSpace: 'nowrap' }
-                }, '通知与标题'),
+                }, '完成通知与审批提醒'),
                 tip && React.createElement('span', {
                   key: 'tip',
                   style: {
@@ -393,7 +390,7 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
                   marginTop: '3px',
                   lineHeight: '1.4'
                 }
-              }, '管理系统通知、应用内浮窗、聚焦时提醒模式与会话智能命名。')
+              }, '管理任务完成通知、等待审批与 Plan 提交通知、提示音效及前后台提醒模式。')
             ]),
 
             React.createElement('button', {
@@ -536,7 +533,7 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
               justifyContent: 'space-between',
               padding: '12px 0',
               borderBottom: '1px solid var(--dsw-alias-border-l1, rgba(255, 255, 255, 0.06))',
-              opacity: settings.enabled ? 1 : 0.45,
+              opacity: settings.enabled ? 1 : 0.45
             }
           }, [
             React.createElement('div', { key: 'l3' }, [
@@ -602,7 +599,6 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
               alignItems: 'center',
               justifyContent: 'space-between',
               padding: '12px 0',
-              borderBottom: '1px solid var(--dsw-alias-border-l1, rgba(255, 255, 255, 0.06))',
               opacity: settings.enabled ? 1 : 0.45
             }
           }, [
@@ -634,34 +630,10 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
               }),
               React.createElement('span', { key: 'unit', style: { fontSize: '12px', color: 'var(--dsw-alias-label-caption, #8a8f98)' } }, '秒')
             ])
-          ]),
-
-          // Row 8: 首轮对话智能提炼标题
-          React.createElement('div', {
-            key: 'row-autotitle',
-            style: {
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '12px 0'
-            }
-          }, [
-            React.createElement('div', { key: 'l5' }, [
-              React.createElement('div', { style: { fontSize: '13.5px', fontWeight: '450' } }, '首轮对话智能提炼标题'),
-              React.createElement('div', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-caption, #8a8f98)', marginTop: '2px' } }, '首轮对话完成后，根据实际意图自动生成清晰中文标题（彻底替换 task ready）')
-            ]),
-            React.createElement(Switch, {
-              key: 'sw5',
-              checked: settings.autoTitle !== false,
-              onChange: (val) => updateSetting('autoTitle', val)
-            })
           ])
         ]);
       }
 
-      /**
-       * 监听系统通知事件并由统一调度中心分发 (支持前台 Toast、全量/未聚焦判断、自动切会话)
-       */
       function setupNotificationListener(ctx) {
         if (typeof window === 'undefined') return;
 
@@ -684,9 +656,7 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
             }
           };
 
-          eventSource.onerror = () => {
-            // 保持重连
-          };
+          eventSource.onerror = () => {};
 
           ctx.effect(() => () => {
             eventSource.close();
@@ -696,9 +666,6 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
         }
       }
 
-      /**
-       * 注入设置面板左侧导航图标 (使用纯矢量 SVG mask 替换通用小齿轮，像素级 1:1 对齐)
-       */
       function installSidebarNavIcon(ctx) {
         if (typeof document === 'undefined') return;
 
@@ -734,7 +701,7 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
             const buttons = document.querySelectorAll('[role="dialog"] nav button');
             for (const btn of buttons) {
               const text = (btn.textContent || '').trim();
-              if (text.includes('通知与标题') || (text.includes('通知') && (text.includes('提醒') || text.includes('设置')))) {
+              if (text.includes('完成通知') || text.includes('通知与审批') || text.includes('通知与标题') || (text.includes('通知') && (text.includes('提醒') || text.includes('设置')))) {
                 btn.setAttribute('data-dsh-notifier-nav', '');
               } else {
                 btn.removeAttribute('data-dsh-notifier-nav');
@@ -773,7 +740,7 @@ if (typeof window !== 'undefined' && window.__ModuleLoader__) {
               name: 'settings.section',
               id: 'notifier',
               order: 35,
-              label: () => '通知与标题',
+              label: () => '完成通知与审批提醒',
             }, (ownerProps = {}) => React.createElement(NotifierSettingsView, { ctx, ...ownerProps }))
           );
         }
