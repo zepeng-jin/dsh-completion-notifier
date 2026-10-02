@@ -17,7 +17,9 @@
     "cordis.patch.yml",
     "src",
     "icon.svg",
-    "locale"
+    "locale",
+    "screenshots.json",
+    "assets"
   ],
   "keywords": [
     "deepseek",
